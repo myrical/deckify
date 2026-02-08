@@ -68,7 +68,7 @@ export class GoogleSlidesRenderer implements DeckRenderer {
     // Create the presentation
     const presentation = await this.slides.presentations.create({
       requestBody: {
-        title: "Deckify Report",
+        title: "Prism Report",
         pageSize: {
           width: { magnitude: emu(13.333), unit: "EMU" },
           height: { magnitude: emu(7.5), unit: "EMU" },
@@ -79,7 +79,7 @@ export class GoogleSlidesRenderer implements DeckRenderer {
 
     // Create a backing spreadsheet for chart data
     const spreadsheet = await this.sheets.spreadsheets.create({
-      requestBody: { properties: { title: "Deckify Chart Data" } },
+      requestBody: { properties: { title: "Prism Chart Data" } },
     });
     this.spreadsheetId = spreadsheet.data.spreadsheetId!;
 
@@ -139,7 +139,7 @@ export class GoogleSlidesRenderer implements DeckRenderer {
     return {
       kind: "url",
       url,
-      title: "Deckify Report",
+      title: "Prism Report",
     };
   }
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { MetaAdsConnector } from "@/core/ad-platforms/meta";
-import { DeckifyError } from "@/core/errors/types";
+import { PrismError } from "@/core/errors/types";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -42,7 +42,7 @@ export async function GET(request: Request) {
       `${process.env.NEXTAUTH_URL}/dashboard?${params}`
     );
   } catch (err) {
-    const message = err instanceof DeckifyError ? err.code : "unknown_error";
+    const message = err instanceof PrismError ? err.code : "unknown_error";
     return NextResponse.redirect(
       `${process.env.NEXTAUTH_URL}/dashboard?error=${message}`
     );

@@ -35,7 +35,7 @@ export class PptxRenderer implements DeckRenderer {
     this.tokens = tokens;
 
     this.pptx.defineSlideMaster({
-      title: "DECKIFY_MASTER",
+      title: "PRISM_MASTER",
       background: { color: tokens.colors.background.replace("#", "") },
     });
   }
@@ -85,7 +85,7 @@ export class PptxRenderer implements DeckRenderer {
   // ─── Slide Builders ──────────────────────────────────────────────────────
 
   private addTitleSlide(data: TitleSlideData): void {
-    const slide = this.pptx.addSlide({ masterName: "DECKIFY_MASTER" });
+    const slide = this.pptx.addSlide({ masterName: "PRISM_MASTER" });
 
     slide.addText(data.clientName, {
       x: 0.8,
@@ -142,7 +142,7 @@ export class PptxRenderer implements DeckRenderer {
   }
 
   private addKPIOverviewSlide(data: KPIOverviewData): void {
-    const slide = this.pptx.addSlide({ masterName: "DECKIFY_MASTER" });
+    const slide = this.pptx.addSlide({ masterName: "PRISM_MASTER" });
     this.addSlideHeader(slide, data.title);
 
     const cols = Math.min(data.metrics.length, 4);
@@ -215,7 +215,7 @@ export class PptxRenderer implements DeckRenderer {
   }
 
   private addCampaignBreakdownSlide(data: CampaignBreakdownData): void {
-    const slide = this.pptx.addSlide({ masterName: "DECKIFY_MASTER" });
+    const slide = this.pptx.addSlide({ masterName: "PRISM_MASTER" });
     this.addSlideHeader(slide, data.title);
 
     if (data.chartType === "bar" || data.chartType === "bar_and_table") {
@@ -276,7 +276,7 @@ export class PptxRenderer implements DeckRenderer {
   }
 
   private addTrendAnalysisSlide(data: TrendAnalysisData): void {
-    const slide = this.pptx.addSlide({ masterName: "DECKIFY_MASTER" });
+    const slide = this.pptx.addSlide({ masterName: "PRISM_MASTER" });
     this.addSlideHeader(slide, data.title);
 
     const chartData = data.metrics.map((metric, idx) => ({
@@ -308,7 +308,7 @@ export class PptxRenderer implements DeckRenderer {
   }
 
   private addTopPerformersSlide(data: TopPerformersData): void {
-    const slide = this.pptx.addSlide({ masterName: "DECKIFY_MASTER" });
+    const slide = this.pptx.addSlide({ masterName: "PRISM_MASTER" });
     this.addSlideHeader(slide, data.title);
 
     data.items.slice(0, 5).forEach((item, idx) => {
@@ -390,7 +390,7 @@ export class PptxRenderer implements DeckRenderer {
   }
 
   private addAudienceInsightsSlide(data: AudienceInsightsData): void {
-    const slide = this.pptx.addSlide({ masterName: "DECKIFY_MASTER" });
+    const slide = this.pptx.addSlide({ masterName: "PRISM_MASTER" });
     this.addSlideHeader(slide, data.title);
 
     const chartsPerRow = Math.min(data.breakdowns.length, 3);
@@ -427,7 +427,7 @@ export class PptxRenderer implements DeckRenderer {
   }
 
   private addBudgetAllocationSlide(data: BudgetAllocationData): void {
-    const slide = this.pptx.addSlide({ masterName: "DECKIFY_MASTER" });
+    const slide = this.pptx.addSlide({ masterName: "PRISM_MASTER" });
     this.addSlideHeader(slide, data.title);
 
     const chartType = data.chartType === "pie" ? "pie" : data.chartType === "doughnut" ? "doughnut" : "bar";
@@ -471,7 +471,7 @@ export class PptxRenderer implements DeckRenderer {
   }
 
   private addComparisonSlide(data: ComparisonData): void {
-    const slide = this.pptx.addSlide({ masterName: "DECKIFY_MASTER" });
+    const slide = this.pptx.addSlide({ masterName: "PRISM_MASTER" });
     this.addSlideHeader(slide, data.title);
 
     const chartData = [
@@ -509,7 +509,7 @@ export class PptxRenderer implements DeckRenderer {
   }
 
   private addExecutiveSummarySlide(data: ExecutiveSummaryData): void {
-    const slide = this.pptx.addSlide({ masterName: "DECKIFY_MASTER" });
+    const slide = this.pptx.addSlide({ masterName: "PRISM_MASTER" });
     this.addSlideHeader(slide, data.title);
 
     slide.addText(data.summary, {

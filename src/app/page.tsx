@@ -5,7 +5,7 @@ export default function Home() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-white px-4 font-sans">
       <main className="flex max-w-2xl flex-col items-center gap-8 text-center">
         <h1 className="text-5xl font-bold tracking-tight text-gray-900">
-          Deckify
+          Prism
         </h1>
         <p className="text-xl leading-relaxed text-gray-600">
           Convert your Meta &amp; Google Ads accounts into beautiful

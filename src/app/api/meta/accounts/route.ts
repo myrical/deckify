@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { MetaAdsConnector } from "@/core/ad-platforms/meta";
-import { DeckifyError } from "@/core/errors/types";
+import { PrismError } from "@/core/errors/types";
 
 export async function POST(request: Request) {
   try {
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ accounts });
   } catch (err) {
-    if (err instanceof DeckifyError) {
+    if (err instanceof PrismError) {
       return NextResponse.json(
         { error: err.message, code: err.code, recoveryAction: err.recoveryAction },
         { status: err.code === "TOKEN_EXPIRED" ? 401 : 500 }

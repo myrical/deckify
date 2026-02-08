@@ -1,10 +1,10 @@
-# Deckify
+# Prism
 
 **Convert your Meta & Google Ads accounts into beautiful presentation decks in minutes.**
 
-## What is Deckify?
+## What is Prism?
 
-Deckify is a tool for marketers who need to create professional ad performance decks without the manual copy-paste grind. Connect your ad accounts, choose your presets, and export a polished deck — as a downloadable PPTX or directly into Google Slides.
+Prism is a marketing intelligence hub for marketers who need to create professional ad performance decks without the manual copy-paste grind. Connect your ad accounts, choose your presets, and export a polished deck — as a downloadable PPTX or directly into Google Slides.
 
 ## Features (Planned)
 
@@ -20,7 +20,7 @@ Deckify is a tool for marketers who need to create professional ad performance d
 
 1. **Connect** — Link your Meta or Google Ads account via OAuth
 2. **Configure** — Quick questionnaire: timeframe, KPIs, focus areas, chart types, optional analysis
-3. **Generate** — Hit "Go" — Deckify pulls your data, analyzes trends, and builds the deck
+3. **Generate** — Hit "Go" — Prism pulls your data, analyzes trends, and builds the deck
 4. **Export** — Download PPTX or open directly in Google Slides
 
 ## Architecture
@@ -110,7 +110,7 @@ Users check which slides they want and reorder them in the questionnaire. Preset
 
 ## User Flow Example: Agency with Meta + Google Ads → Google Slides
 
-1. User signs into Deckify (email magic link or Google sign-in)
+1. User signs into Prism (email magic link or Google sign-in)
 2. Creates a client: "Acme Corp"
 3. Connects Meta Ads and Google Ads to Acme Corp (OAuth popups, selects ad accounts)
 4. Clicks "New Deck" for Acme Corp, enters questionnaire:

@@ -13,7 +13,7 @@ import { PptxRenderer } from "@/core/deck/pptx";
 import { GoogleSlidesRenderer } from "@/core/deck/google-slides";
 import { composeDeck } from "@/core/deck/composer";
 import { NoopAnalyzer } from "@/core/analysis/noop-analyzer";
-import { DeckifyError } from "@/core/errors/types";
+import { PrismError } from "@/core/errors/types";
 import type { AdPlatformConnector, AccountSummary, MetricKey } from "@/core/ad-platforms/types";
 import type { DeckConfig, DeckRenderer, SlideSelection } from "@/core/deck/types";
 
@@ -144,7 +144,7 @@ export async function POST(request: Request) {
             });
           }
         } catch (err) {
-          if (err instanceof DeckifyError) {
+          if (err instanceof PrismError) {
             sendEvent("error", {
               message: err.message,
               code: err.code,

@@ -12,7 +12,7 @@ export type RecoveryAction =
   | "abort_with_message" // Unrecoverable — show error to user
   | "select_account";    // Account issue — prompt user to pick a different account
 
-export class DeckifyError extends Error {
+export class PrismError extends Error {
   public readonly code: string;
   public readonly recoveryAction: RecoveryAction;
   public readonly platform?: string;
@@ -29,7 +29,7 @@ export class DeckifyError extends Error {
     }
   ) {
     super(message, { cause: options?.cause });
-    this.name = "DeckifyError";
+    this.name = "PrismError";
     this.code = code;
     this.recoveryAction = recoveryAction;
     this.platform = options?.platform;
@@ -37,7 +37,7 @@ export class DeckifyError extends Error {
   }
 }
 
-export class TokenExpiredError extends DeckifyError {
+export class TokenExpiredError extends PrismError {
   constructor(platform: string, cause?: unknown) {
     super(
       `Your ${platform} connection has expired. Please reconnect.`,
@@ -49,7 +49,7 @@ export class TokenExpiredError extends DeckifyError {
   }
 }
 
-export class RateLimitError extends DeckifyError {
+export class RateLimitError extends PrismError {
   constructor(platform: string, retryAfterMs: number, cause?: unknown) {
     super(
       `Rate limited by ${platform}. Retrying automatically...`,
@@ -61,7 +61,7 @@ export class RateLimitError extends DeckifyError {
   }
 }
 
-export class ApiError extends DeckifyError {
+export class ApiError extends PrismError {
   public readonly statusCode?: number;
 
   constructor(
@@ -81,7 +81,7 @@ export class ApiError extends DeckifyError {
   }
 }
 
-export class NetworkError extends DeckifyError {
+export class NetworkError extends PrismError {
   constructor(platform: string, cause?: unknown) {
     super(
       `Network error connecting to ${platform}. Retrying...`,
@@ -93,7 +93,7 @@ export class NetworkError extends DeckifyError {
   }
 }
 
-export class DataValidationError extends DeckifyError {
+export class DataValidationError extends PrismError {
   constructor(message: string, platform?: string) {
     super(
       `Data validation error: ${message}`,
@@ -105,7 +105,7 @@ export class DataValidationError extends DeckifyError {
   }
 }
 
-export class AccountAccessError extends DeckifyError {
+export class AccountAccessError extends PrismError {
   constructor(platform: string, cause?: unknown) {
     super(
       `Cannot access the selected ${platform} ad account. Check permissions or select a different account.`,

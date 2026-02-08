@@ -18,7 +18,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gray-50 font-sans">
       <header className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <h1 className="text-xl font-bold text-gray-900">Deckify</h1>
+          <h1 className="text-xl font-bold text-gray-900">Prism</h1>
           <nav className="flex items-center gap-4">
             <Link
               href="/dashboard"

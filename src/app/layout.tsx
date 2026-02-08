@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Deckify — Ad Performance Decks in Minutes",
+  title: "Prism — Marketing Intelligence & Deck Generation",
   description:
-    "Convert your Meta & Google Ads accounts into beautiful presentation decks. Connect, configure, generate, export.",
+    "Marketing intelligence hub — dashboard, ad performance decks, and Shopify analytics. Connect, analyze, generate, export.",
 };
 
 export default function RootLayout({

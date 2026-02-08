@@ -1,7 +1,7 @@
 import type { DesignTokens } from "./types";
 
 /**
- * Default design tokens for Deckify-generated decks.
+ * Default design tokens for Prism-generated decks.
  * Professional, clean, dark-on-light with a blue accent.
  */
 export const defaultDesignTokens: DesignTokens = {

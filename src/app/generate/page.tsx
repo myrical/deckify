@@ -90,7 +90,7 @@ export default function GeneratePage() {
       <header className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
           <Link href="/dashboard" className="text-xl font-bold text-gray-900">
-            Deckify
+            Prism
           </Link>
           <span className="text-sm text-gray-500">New Deck</span>
         </div>
