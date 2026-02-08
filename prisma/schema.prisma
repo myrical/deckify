@@ -1,0 +1,156 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Auth (NextAuth.js) ─────────────────────────────────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── Users & Organizations ──────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts       Account[]
+  sessions       Session[]
+  memberships    OrgMembership[]
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members OrgMembership[]
+  clients Client[]
+  presets Preset[]        // org-level shared presets
+}
+
+model OrgMembership {
+  id     String  @id @default(cuid())
+  role   String  @default("owner") // owner, admin, member
+  userId String
+  orgId  String
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, orgId])
+}
+
+// ─── Clients & Ad Accounts ──────────────────────────────────────────────────
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  orgId     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  adAccounts   AdAccount[]
+  presets      Preset[]     // client-level presets
+}
+
+model AdAccount {
+  id             String   @id @default(cuid())
+  platform       String   // "meta" | "google"
+  platformId     String   // the actual ad account ID on the platform
+  name           String
+  currency       String   @default("USD")
+  timezone       String   @default("America/New_York")
+  status         String   @default("active") // active, disabled, disconnected
+  clientId       String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  client     Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  connection AdConnection?
+
+  @@unique([platform, platformId])
+}
+
+model AdConnection {
+  id              String   @id @default(cuid())
+  adAccountId     String   @unique
+  accessToken     String   @db.Text  // encrypted at application level
+  refreshToken    String?  @db.Text  // encrypted at application level
+  tokenExpiresAt  DateTime?
+  scopes          String[] @default([])
+  connectedAt     DateTime @default(now())
+  lastRefreshedAt DateTime @default(now())
+
+  adAccount AdAccount @relation(fields: [adAccountId], references: [id], onDelete: Cascade)
+}
+
+// ─── Google Slides Output Connection ────────────────────────────────────────
+
+model GoogleSlidesConnection {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  accessToken    String   @db.Text  // encrypted
+  refreshToken   String?  @db.Text  // encrypted
+  tokenExpiresAt DateTime?
+  scopes         String[] @default([])
+  connectedAt    DateTime @default(now())
+}
+
+// ─── Presets ────────────────────────────────────────────────────────────────
+
+model Preset {
+  id        String   @id @default(cuid())
+  name      String
+  clientId  String?  // null = org-level preset
+  orgId     String?  // null = client-level preset
+  config    Json     // DeckConfig serialized as JSON
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  client       Client?       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  organization Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
+}
