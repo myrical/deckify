@@ -1,0 +1,1 @@
+export { GoogleSlidesRenderer } from "./renderer";

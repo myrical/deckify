@@ -1,0 +1,1 @@
+export { GoogleAdsConnector } from "./connector";

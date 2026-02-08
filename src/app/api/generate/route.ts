@@ -8,12 +8,14 @@
 
 import { NextResponse } from "next/server";
 import { MetaAdsConnector } from "@/core/ad-platforms/meta";
+import { GoogleAdsConnector } from "@/core/ad-platforms/google-ads";
 import { PptxRenderer } from "@/core/deck/pptx";
+import { GoogleSlidesRenderer } from "@/core/deck/google-slides";
 import { composeDeck } from "@/core/deck/composer";
 import { NoopAnalyzer } from "@/core/analysis/noop-analyzer";
 import { DeckifyError } from "@/core/errors/types";
 import type { AdPlatformConnector, AccountSummary, MetricKey } from "@/core/ad-platforms/types";
-import type { DeckConfig, SlideSelection } from "@/core/deck/types";
+import type { DeckConfig, DeckRenderer, SlideSelection } from "@/core/deck/types";
 
 interface GenerateRequest {
   clientName: string;
@@ -34,6 +36,7 @@ interface GenerateRequest {
     order: number;
   }>;
   metrics?: MetricKey[];
+  googleSlidesAccessToken?: string; // for Google Slides output (just-in-time auth)
 }
 
 function getConnector(platform: "meta" | "google"): AdPlatformConnector {
@@ -41,10 +44,21 @@ function getConnector(platform: "meta" | "google"): AdPlatformConnector {
     case "meta":
       return new MetaAdsConnector();
     case "google":
-      // TODO: GoogleAdsConnector
-      throw new Error("Google Ads connector not yet implemented");
+      return new GoogleAdsConnector();
     default:
       throw new Error(`Unknown platform: ${platform}`);
+  }
+}
+
+function getRenderer(format: "pptx" | "google_slides", googleToken?: string): DeckRenderer {
+  switch (format) {
+    case "pptx":
+      return new PptxRenderer();
+    case "google_slides":
+      if (!googleToken) throw new Error("Google Slides access token required");
+      return new GoogleSlidesRenderer(googleToken);
+    default:
+      throw new Error(`Unknown output format: ${format}`);
   }
 }
 
@@ -92,9 +106,8 @@ export async function POST(request: Request) {
           );
 
           // 2. Set up renderer
-          const renderer = body.outputFormat === "pptx"
-            ? new PptxRenderer()
-            : (() => { throw new Error("Google Slides renderer not yet implemented"); })();
+          sendEvent("progress", { message: "Setting up deck renderer..." });
+          const renderer = getRenderer(body.outputFormat, body.googleSlidesAccessToken);
 
           // 3. Compose and generate the deck
           const config: DeckConfig = {
