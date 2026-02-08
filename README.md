@@ -157,6 +157,48 @@ Users check which slides they want and reorder them in the questionnaire. Preset
 
 **MVP runs essentially free.** The ad platform APIs, deck generation library, and auth are all free. The only hard costs are Vercel hosting ($20/mo on Pro) and database if you outgrow free tiers. The most expensive thing at scale would be Claude API if added — but even at 1,000 decks/month with full analysis, that's ~$20/month. This is an extremely low-cost-to-run product.
 
+## AI Integration Roadmap (Post-MVP)
+
+Claude API integration via a pluggable `DeckAnalyzer` interface. MVP ships with a `NoopAnalyzer` (no AI, no cost). Post-MVP swaps in `ClaudeAnalyzer` with zero changes to existing code.
+
+### Integration Points (in rollout order)
+
+**Phase 1: Executive Summary Slide** (~$0.003-0.005/deck)
+- Auto-generated opening narrative: "In January, Acme Corp spent $45K across Meta and Google, generating 1,240 conversions at $36 CPA — a 12% improvement over December..."
+- Replaces the 20-30 minutes marketers spend writing this manually
+
+**Phase 2: Anomaly Detection** (~$0.005-0.01/deck)
+- Scans data for risks and opportunities a junior marketer might miss
+- "CPA for Google Search increased 25% MoM — investigate keyword competition"
+- Generates a "Key Findings" slide
+
+**Phase 3: Per-Slide Commentary** (~$0.008-0.015/deck)
+- 1-2 sentence annotation on each data slide explaining the takeaway
+- Batched into a single Claude call for all slides
+
+**Phase 4: User-Prompted Analysis** (marginal cost)
+- User types context in questionnaire: "We launched a new landing page Jan 15th"
+- Claude weaves this into summaries and annotations
+
+### Pluggable Interface
+
+```
+DeckAnalyzer interface:
+  generateExecutiveSummary(data) → string | null
+  generateSlideCommentary(slide) → string | null
+  detectAnomalies(data) → Anomaly[] | null
+
+NoopAnalyzer (MVP)   → returns null for everything, no API calls
+ClaudeAnalyzer (v2)  → real analysis, uses Claude API
+```
+
+### Cost Optimization
+
+- Batch all analysis into one Claude call (~40% savings)
+- Use Haiku for slide commentary, Sonnet for summaries (~60% savings)
+- Prompt caching for system instructions (~90% savings on repeated prompts)
+- All-in cost per deck with full analysis: ~$0.01-0.03
+
 ## Status
 
 Early Development — Architecture finalized, implementation starting.
