@@ -7,6 +7,7 @@ import { AggregateView } from "./components/aggregate-view";
 import { MetaView } from "./components/meta-view";
 import { GoogleView } from "./components/google-view";
 import { ShopifyView } from "./components/shopify-view";
+import { ConnectAccounts } from "./components/connect-accounts";
 
 export default function DashboardPage() {
   const [activeView, setActiveView] = useState<PlatformView>("aggregate");
@@ -19,6 +20,11 @@ export default function DashboardPage() {
       <NavHeader />
 
       <main className="mx-auto max-w-7xl px-6 py-8">
+        {/* Connect Accounts section */}
+        <div className="mb-8">
+          <ConnectAccounts />
+        </div>
+
         {/* Platform Tabs + Date Picker row */}
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between animate-fade-in">
           <PlatformTabs
