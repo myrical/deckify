@@ -1,0 +1,1 @@
+export { ShopifyConnector } from "./connector";

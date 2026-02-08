@@ -1,13 +1,14 @@
 /**
- * Ad Platform Connector Interface & Normalized Data Types
+ * Data Source Connector Interface & Normalized Data Types
  *
- * All platform-specific connectors (Meta, Google Ads) implement AdPlatformConnector
- * and return normalized types. Everything downstream is platform-agnostic.
+ * All platform-specific connectors (Meta, Google Ads, Shopify, etc.)
+ * implement DataSourceConnector and return normalized types.
+ * Everything downstream is platform-agnostic.
  */
 
 // ─── Platform Enum ───────────────────────────────────────────────────────────
 
-export type AdPlatform = "meta" | "google";
+export type AdPlatform = "meta" | "google" | "shopify";
 
 // ─── Auth Types ──────────────────────────────────────────────────────────────
 
@@ -111,6 +112,75 @@ export interface NormalizedBreakdown {
     label: string;
     metrics: NormalizedMetrics;
   }>;
+}
+
+// ─── E-Commerce Data Models (Shopify/WooCommerce) ────────────────────────────
+
+export interface NormalizedEcommerceMetrics {
+  revenue: number;
+  orders: number;
+  averageOrderValue: number;
+  refunds: number;
+  refundAmount: number;
+  newCustomers: number;
+  returningCustomers: number;
+  conversionRate: number;
+  dateRange: DateRange;
+}
+
+export interface NormalizedProduct {
+  id: string;
+  name: string;
+  imageUrl?: string;
+  revenue: number;
+  unitsSold: number;
+  refundRate: number;
+}
+
+export interface NormalizedEcommerceTimeSeries {
+  date: string;
+  metrics: NormalizedEcommerceMetrics;
+}
+
+export interface EcommerceSummary {
+  account: AdAccount;
+  metrics: NormalizedEcommerceMetrics;
+  previousPeriodMetrics?: NormalizedEcommerceMetrics;
+  topProducts: NormalizedProduct[];
+  timeSeries: NormalizedEcommerceTimeSeries[];
+}
+
+// ─── Creative / Ad Preview Types ─────────────────────────────────────────────
+
+export interface NormalizedCreative {
+  id: string;
+  name: string;
+  platform: AdPlatform;
+  campaignName: string;
+  adSetName?: string;
+  thumbnailUrl?: string;
+  previewUrl?: string;
+  format: "image" | "video" | "carousel" | "text";
+  metrics: NormalizedMetrics;
+}
+
+// ─── Cross-Platform Aggregate Types ──────────────────────────────────────────
+
+export interface CrossPlatformSummary {
+  totalAdSpend: number;
+  totalRevenue: number;        // from Shopify/WooCommerce
+  blendedRoas: number;         // totalRevenue / totalAdSpend
+  mer: number;                 // Marketing Efficiency Ratio (same calc, different name)
+  totalConversions: number;
+  totalOrders: number;
+  platformBreakdown: Array<{
+    platform: AdPlatform;
+    spend: number;
+    conversions: number;
+    revenue: number;
+    roas: number;
+  }>;
+  dateRange: DateRange;
 }
 
 // ─── Account-Level Summary ───────────────────────────────────────────────────
