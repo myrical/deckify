@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { NavHeader } from "@/components/nav-header";
 import { PlatformTabs, type PlatformView } from "./components/platform-tabs";
 import { AggregateView } from "./components/aggregate-view";
 import { MetaView } from "./components/meta-view";
@@ -15,79 +15,94 @@ export default function DashboardPage() {
   const connectedPlatforms: PlatformView[] = ["meta", "google", "shopify"];
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
-      <header className="border-b border-gray-200 bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <h1 className="text-xl font-bold text-gray-900">Prism</h1>
-          <nav className="flex items-center gap-4">
-            <Link
-              href="/dashboard"
-              className="text-sm font-medium text-gray-900"
-            >
-              Dashboard
-            </Link>
-            <Link
-              href="/generate"
-              className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-800"
-            >
-              New Deck
-            </Link>
-          </nav>
-        </div>
-      </header>
+    <div className="min-h-screen" style={{ background: "var(--bg-primary)" }}>
+      <NavHeader />
 
       <main className="mx-auto max-w-7xl px-6 py-8">
         {/* Platform Tabs + Date Picker row */}
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between animate-fade-in">
           <PlatformTabs
             active={activeView}
             onTabChange={setActiveView}
             connectedPlatforms={connectedPlatforms}
           />
           <div className="flex items-center gap-3">
-            <select className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700">
+            <select
+              className="rounded-xl px-4 py-2 text-sm font-medium outline-none"
+              style={{
+                background: "var(--bg-card)",
+                border: "1px solid var(--border-primary)",
+                color: "var(--text-primary)",
+              }}
+            >
               <option>Last 7 days</option>
               <option>Last 14 days</option>
               <option>Last 30 days</option>
               <option>Last 90 days</option>
               <option>Custom range</option>
             </select>
-            <button className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+            <button
+              className="rounded-xl px-4 py-2 text-sm font-medium transition-colors"
+              style={{
+                background: "var(--bg-card)",
+                border: "1px solid var(--border-primary)",
+                color: "var(--text-secondary)",
+              }}
+            >
               Export
             </button>
           </div>
         </div>
 
-        {/* Active View */}
-        {activeView === "aggregate" && <AggregateView />}
-        {activeView === "meta" && <MetaView />}
-        {activeView === "google" && <GoogleView />}
-        {activeView === "shopify" && <ShopifyView />}
+        {/* Active View with animation */}
+        <div key={activeView} className="animate-fade-in">
+          {activeView === "aggregate" && <AggregateView />}
+          {activeView === "meta" && <MetaView />}
+          {activeView === "google" && <GoogleView />}
+          {activeView === "shopify" && <ShopifyView />}
+        </div>
 
         {/* Clients & Recent Decks (below the platform views) */}
-        <div className="mt-10 grid gap-8 lg:grid-cols-2">
-          <section>
+        <div className="mt-10 grid gap-6 lg:grid-cols-2 animate-fade-in" style={{ animationDelay: "200ms" }}>
+          <section
+            className="rounded-xl p-6"
+            style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}
+          >
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-gray-900">Clients</h2>
-              <button className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50">
-                Add Client
+              <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>Clients</h2>
+              <button
+                className="rounded-lg px-3 py-1.5 text-xs font-medium transition-all hover:scale-105"
+                style={{
+                  background: "var(--accent-primary-light)",
+                  color: "var(--accent-primary)",
+                }}
+              >
+                + Add Client
               </button>
             </div>
-            <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
-              <p className="text-sm text-gray-500">
-                No clients yet. Add a client to connect their ad accounts and
-                start generating decks.
+            <div
+              className="flex items-center justify-center rounded-lg py-8"
+              style={{ background: "var(--bg-secondary)" }}
+            >
+              <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
+                No clients yet. Add a client to get started.
               </p>
             </div>
           </section>
 
-          <section>
-            <h2 className="mb-4 text-lg font-semibold text-gray-900">
+          <section
+            className="rounded-xl p-6"
+            style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}
+          >
+            <h2 className="mb-4 text-base font-semibold" style={{ color: "var(--text-primary)" }}>
               Recent Decks
             </h2>
-            <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
-              <p className="text-sm text-gray-500">
-                No decks generated yet. Create your first deck to see it here.
+            <div
+              className="flex items-center justify-center rounded-lg py-8"
+              style={{ background: "var(--bg-secondary)" }}
+            >
+              <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
+                No decks generated yet.
               </p>
             </div>
           </section>

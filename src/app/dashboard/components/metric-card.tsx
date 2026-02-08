@@ -1,4 +1,4 @@
-import { cn } from "@/lib/cn";
+"use client";
 
 interface MetricCardProps {
   label: string;
@@ -10,26 +10,69 @@ interface MetricCardProps {
 
 export function MetricCard({ label, value, change, trend, size = "md" }: MetricCardProps) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4">
-      <p className="text-xs font-medium uppercase tracking-wide text-gray-500">{label}</p>
+    <div
+      className="group relative overflow-hidden rounded-xl p-4 transition-all duration-200 hover:-translate-y-0.5"
+      style={{
+        background: "var(--bg-card)",
+        border: "1px solid var(--border-primary)",
+        boxShadow: "var(--shadow-sm)",
+      }}
+    >
+      {/* Subtle gradient accent on top */}
+      <div
+        className="absolute inset-x-0 top-0 h-0.5 opacity-0 transition-opacity group-hover:opacity-100"
+        style={{ background: "linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))" }}
+      />
+
       <p
-        className={cn(
-          "mt-1 font-bold text-gray-900",
+        className="text-xs font-semibold uppercase tracking-wider"
+        style={{ color: "var(--text-tertiary)" }}
+      >
+        {label}
+      </p>
+      <p
+        className={`mt-1.5 font-bold ${
           size === "lg" ? "text-3xl" : size === "md" ? "text-2xl" : "text-xl"
-        )}
+        }`}
+        style={{ color: "var(--text-primary)" }}
       >
         {value}
       </p>
       {change !== undefined && (
-        <p
-          className={cn(
-            "mt-1 text-sm font-medium",
-            trend === "up" ? "text-green-600" : trend === "down" ? "text-red-600" : "text-gray-500"
-          )}
-        >
-          {trend === "up" ? "\u25B2" : trend === "down" ? "\u25BC" : "\u25CF"}{" "}
-          {Math.abs(change).toFixed(1)}% vs prev. period
-        </p>
+        <div className="mt-2 flex items-center gap-1.5">
+          <span
+            className="flex h-5 w-5 items-center justify-center rounded-full text-xs"
+            style={{
+              background:
+                trend === "up"
+                  ? "var(--status-positive-light)"
+                  : trend === "down"
+                    ? "var(--status-negative-light)"
+                    : "var(--bg-tertiary)",
+              color:
+                trend === "up"
+                  ? "var(--status-positive)"
+                  : trend === "down"
+                    ? "var(--status-negative)"
+                    : "var(--text-tertiary)",
+            }}
+          >
+            {trend === "up" ? "\u25B2" : trend === "down" ? "\u25BC" : "\u25CF"}
+          </span>
+          <span
+            className="text-xs font-medium"
+            style={{
+              color:
+                trend === "up"
+                  ? "var(--status-positive)"
+                  : trend === "down"
+                    ? "var(--status-negative)"
+                    : "var(--text-tertiary)",
+            }}
+          >
+            {Math.abs(change).toFixed(1)}% vs prev.
+          </span>
+        </div>
       )}
     </div>
   );
