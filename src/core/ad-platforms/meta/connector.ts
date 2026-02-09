@@ -271,7 +271,6 @@ export class MetaAdsConnector implements AdPlatformConnector {
     const fields = [
       "campaign_id",
       "campaign_name",
-      "campaign_status",
       "objective",
       "spend",
       "impressions",
@@ -296,7 +295,7 @@ export class MetaAdsConnector implements AdPlatformConnector {
     return result.data.map((row) => ({
       id: row.campaign_id ?? "",
       name: row.campaign_name ?? "Unknown Campaign",
-      status: mapCampaignStatus(row.campaign_status),
+      status: "active" as const,
       platform: "meta" as const,
       objective: row.objective,
       metrics: normalizeMetrics(row, dateRange),
