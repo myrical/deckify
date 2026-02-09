@@ -18,17 +18,7 @@ function fmt(n: number): string { return "$" + n.toLocaleString(undefined, { min
 
 export function MetaView({ data }: { data?: MetaViewData }) {
   if (!data) {
-    return (
-      <div className="flex items-center justify-center rounded-xl py-16" style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}>
-        <div className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl" style={{ background: "rgba(24, 119, 242, 0.1)" }}>
-            <svg viewBox="0 0 24 24" fill="#1877F2" className="h-6 w-6"><path d="M12 2.04c-5.5 0-10 4.49-10 10.02 0 5 3.66 9.15 8.44 9.9v-7H7.9v-2.9h2.54V9.85c0-2.52 1.49-3.93 3.78-3.93 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.78-1.63 1.57v1.88h2.78l-.45 2.9h-2.33v7a10 10 0 0 0 8.44-9.9c0-5.53-4.5-10.02-10-10.02Z" /></svg>
-          </div>
-          <p className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>Connect your Meta Ads account</p>
-          <p className="mt-1 text-xs" style={{ color: "var(--text-tertiary)" }}>to see campaign performance</p>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   const prev = data.previousPeriod;

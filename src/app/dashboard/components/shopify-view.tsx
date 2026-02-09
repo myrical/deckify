@@ -14,17 +14,7 @@ function fmt(n: number): string { return "$" + n.toLocaleString(undefined, { min
 
 export function ShopifyView({ data }: { data?: ShopifyViewData }) {
   if (!data) {
-    return (
-      <div className="flex items-center justify-center rounded-xl py-16" style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}>
-        <div className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl" style={{ background: "rgba(150, 191, 72, 0.1)" }}>
-            <svg viewBox="0 0 24 24" fill="#96BF48" className="h-6 w-6"><path d="M15.34 2.61a.26.26 0 0 0-.24-.21 2.2 2.2 0 0 0-.49 0s-1 .3-1.36.4a4 4 0 0 0-.27-.69A2 2 0 0 0 11.24 1c-.09 0-.69 0-1.34.86a5 5 0 0 0-.81 2.38l-1.56.48a.85.85 0 0 0-.54.56c-.06.18-1.41 10.86-1.41 10.86L11.73 17l6-1.3s-2.36-12.92-2.39-13.09Z" /><path d="m17.55 15.63-6 1.3.85 4.14 5.42-1.17-.27-4.27Z" /></svg>
-          </div>
-          <p className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>Connect your Shopify store</p>
-          <p className="mt-1 text-xs" style={{ color: "var(--text-tertiary)" }}>to see revenue and order data</p>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   const prev = data.previousPeriod;

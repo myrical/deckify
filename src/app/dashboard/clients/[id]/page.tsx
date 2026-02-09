@@ -6,6 +6,7 @@ import Link from "next/link";
 import { MetaView } from "../../components/meta-view";
 import { GoogleView } from "../../components/google-view";
 import { ShopifyView } from "../../components/shopify-view";
+import { AnalyticsErrorBanner } from "../../components/analytics-error-banner";
 
 interface AdAccountInfo {
   id: string;
@@ -39,6 +40,8 @@ export default function ClientDetailPage() {
   const [activePlatform, setActivePlatform] = useState<ActivePlatform | null>(null);
   const [analyticsData, setAnalyticsData] = useState<Record<string, unknown> | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [errors, setErrors] = useState<Array<{ accountId: string; accountName: string; error: string; code: string; recoveryAction: string }>>([]);
+  const [accountsFound, setAccountsFound] = useState<number | null>(null);
 
   // Fetch client info
   useEffect(() => {
@@ -70,10 +73,14 @@ export default function ClientDetailPage() {
     if (!activePlatform || !clientId) return;
     setAnalyticsLoading(true);
     setAnalyticsData(null);
+    setErrors([]);
+    setAccountsFound(null);
     try {
       const res = await fetch(`/api/analytics?platform=${activePlatform}&clientId=${clientId}`);
       if (res.ok) {
         const json = await res.json();
+        setErrors(json.errors ?? []);
+        setAccountsFound(json.accountsFound ?? 0);
         const summaries = json.data ?? [];
         if (summaries.length > 0) {
           setAnalyticsData(summaries[0]);
@@ -150,12 +157,17 @@ export default function ClientDetailPage() {
       {/* Analytics view */}
       {analyticsLoading ? (
         <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>Loading analytics...</p>
-      ) : activePlatform === "meta" ? (
-        <MetaView data={analyticsData ? transformMetaData(analyticsData) : undefined} />
-      ) : activePlatform === "google" ? (
-        <GoogleView data={analyticsData ? transformGoogleData(analyticsData) : undefined} />
-      ) : activePlatform === "shopify" ? (
-        <ShopifyView data={analyticsData ? transformShopifyData(analyticsData) : undefined} />
+      ) : activePlatform ? (
+        <>
+          <AnalyticsErrorBanner errors={errors} accountsFound={accountsFound} platform={activePlatform.charAt(0).toUpperCase() + activePlatform.slice(1)} />
+          {activePlatform === "meta" ? (
+            <MetaView data={analyticsData ? transformMetaData(analyticsData) : undefined} />
+          ) : activePlatform === "google" ? (
+            <GoogleView data={analyticsData ? transformGoogleData(analyticsData) : undefined} />
+          ) : activePlatform === "shopify" ? (
+            <ShopifyView data={analyticsData ? transformShopifyData(analyticsData) : undefined} />
+          ) : null}
+        </>
       ) : (
         <div
           className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed py-16"

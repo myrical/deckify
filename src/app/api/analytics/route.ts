@@ -52,18 +52,18 @@ export async function GET(request: Request) {
     }
 
     if (platform === "meta") {
-      const data = await getMetaAnalytics(clientId, dateRange);
-      return NextResponse.json({ data });
+      const result = await getMetaAnalytics(clientId, dateRange);
+      return NextResponse.json(result);
     }
 
     if (platform === "google") {
-      const data = await getGoogleAnalytics(clientId, dateRange);
-      return NextResponse.json({ data });
+      const result = await getGoogleAnalytics(clientId, dateRange);
+      return NextResponse.json(result);
     }
 
     if (platform === "shopify") {
-      const data = await getShopifyAnalytics(clientId, dateRange);
-      return NextResponse.json({ data });
+      const result = await getShopifyAnalytics(clientId, dateRange);
+      return NextResponse.json(result);
     }
 
     return NextResponse.json({ error: "Invalid platform" }, { status: 400 });

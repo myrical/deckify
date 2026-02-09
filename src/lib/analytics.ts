@@ -16,10 +16,25 @@ import type {
   EcommerceSummary,
   AdPlatform,
 } from "@/core/ad-platforms/types";
+import { PrismError } from "@/core/errors/types";
 
 /* ------------------------------------------------------------------ */
 /*  Types for view components                                          */
 /* ------------------------------------------------------------------ */
+
+export interface AnalyticsError {
+  accountId: string;
+  accountName: string;
+  error: string;
+  code: string;
+  recoveryAction: string;
+}
+
+export interface AnalyticsResult<T> {
+  data: T[];
+  errors: AnalyticsError[];
+  accountsFound: number;
+}
 
 export interface ClientOverview {
   client: { id: string; name: string };
@@ -193,7 +208,7 @@ export async function getOverviewByClient(orgId: string): Promise<ClientOverview
 export async function getMetaAnalytics(
   clientId: string,
   dateRange?: DateRange,
-): Promise<AccountSummary[]> {
+): Promise<AnalyticsResult<AccountSummary>> {
   const range = dateRange ?? defaultDateRange();
   const accounts = await db.adAccount.findMany({
     where: { clientId, platform: "meta", isActive: true },
@@ -201,6 +216,7 @@ export async function getMetaAnalytics(
   });
 
   const summaries: AccountSummary[] = [];
+  const errors: AnalyticsError[] = [];
   for (const acc of accounts) {
     try {
       const connector = new MetaAdsConnector();
@@ -219,15 +235,16 @@ export async function getMetaAnalytics(
       summaries.push(summary);
     } catch (err) {
       console.error(`[Analytics] Meta fetch failed for ${acc.platformId}:`, err);
+      errors.push(toAnalyticsError(acc.platformId, acc.name, err));
     }
   }
-  return summaries;
+  return { data: summaries, errors, accountsFound: accounts.length };
 }
 
 export async function getGoogleAnalytics(
   clientId: string,
   dateRange?: DateRange,
-): Promise<AccountSummary[]> {
+): Promise<AnalyticsResult<AccountSummary>> {
   const range = dateRange ?? defaultDateRange();
   const accounts = await db.adAccount.findMany({
     where: { clientId, platform: "google", isActive: true },
@@ -235,6 +252,7 @@ export async function getGoogleAnalytics(
   });
 
   const summaries: AccountSummary[] = [];
+  const errors: AnalyticsError[] = [];
   for (const acc of accounts) {
     try {
       const connector = new GoogleAdsConnector();
@@ -253,15 +271,16 @@ export async function getGoogleAnalytics(
       summaries.push(summary);
     } catch (err) {
       console.error(`[Analytics] Google fetch failed for ${acc.platformId}:`, err);
+      errors.push(toAnalyticsError(acc.platformId, acc.name, err));
     }
   }
-  return summaries;
+  return { data: summaries, errors, accountsFound: accounts.length };
 }
 
 export async function getShopifyAnalytics(
   clientId: string,
   dateRange?: DateRange,
-): Promise<EcommerceSummary[]> {
+): Promise<AnalyticsResult<EcommerceSummary>> {
   const range = dateRange ?? defaultDateRange();
   const accounts = await db.adAccount.findMany({
     where: { clientId, platform: "shopify", isActive: true },
@@ -269,6 +288,7 @@ export async function getShopifyAnalytics(
   });
 
   const summaries: EcommerceSummary[] = [];
+  const errors: AnalyticsError[] = [];
   for (const acc of accounts) {
     try {
       const connector = new ShopifyConnector();
@@ -286,9 +306,33 @@ export async function getShopifyAnalytics(
       summaries.push(summary);
     } catch (err) {
       console.error(`[Analytics] Shopify fetch failed for ${acc.platformId}:`, err);
+      errors.push(toAnalyticsError(acc.platformId, acc.name, err));
     }
   }
-  return summaries;
+  return { data: summaries, errors, accountsFound: accounts.length };
+}
+
+/* ------------------------------------------------------------------ */
+/*  Error helper                                                       */
+/* ------------------------------------------------------------------ */
+
+function toAnalyticsError(accountId: string, accountName: string, err: unknown): AnalyticsError {
+  if (err instanceof PrismError) {
+    return {
+      accountId,
+      accountName,
+      error: err.message,
+      code: err.code,
+      recoveryAction: err.recoveryAction,
+    };
+  }
+  return {
+    accountId,
+    accountName,
+    error: err instanceof Error ? err.message : "Unknown error",
+    code: "API_ERROR",
+    recoveryAction: "abort_with_message",
+  };
 }
 
 /* ------------------------------------------------------------------ */

@@ -2,11 +2,21 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { ShopifyView } from "../components/shopify-view";
+import { AnalyticsErrorBanner } from "../components/analytics-error-banner";
 
 interface ClientOption {
   id: string;
   name: string;
+}
+
+interface AnalyticsError {
+  accountId: string;
+  accountName: string;
+  error: string;
+  code: string;
+  recoveryAction: string;
 }
 
 export default function ShopifyPage() {
@@ -17,6 +27,8 @@ export default function ShopifyPage() {
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [analyticsData, setAnalyticsData] = useState<Record<string, unknown> | null>(null);
+  const [errors, setErrors] = useState<AnalyticsError[]>([]);
+  const [accountsFound, setAccountsFound] = useState<number | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -39,10 +51,14 @@ export default function ShopifyPage() {
 
   const fetchAnalytics = useCallback(async () => {
     if (!clientId) return;
+    setErrors([]);
+    setAccountsFound(null);
     try {
       const res = await fetch(`/api/analytics?platform=shopify&clientId=${clientId}`);
       if (res.ok) {
         const json = await res.json();
+        setErrors(json.errors ?? []);
+        setAccountsFound(json.accountsFound ?? 0);
         const summaries = json.data ?? [];
         if (summaries.length > 0) {
           const s = summaries[0];
@@ -125,12 +141,36 @@ export default function ShopifyPage() {
           className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed py-16"
           style={{ borderColor: "var(--border-primary)" }}
         >
-          <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
+          <p className="mb-2 text-sm font-medium" style={{ color: "var(--text-secondary)" }}>
             No clients have Shopify data sources assigned.
           </p>
+          <Link href="/dashboard/data-sources" className="text-sm" style={{ color: "var(--accent-primary)" }}>
+            Assign data sources
+          </Link>
         </div>
       ) : (
-        <ShopifyView data={analyticsData as unknown as Parameters<typeof ShopifyView>[0]["data"]} />
+        <>
+          <AnalyticsErrorBanner errors={errors} accountsFound={accountsFound} platform="Shopify" />
+          {analyticsData ? (
+            <ShopifyView data={analyticsData as unknown as Parameters<typeof ShopifyView>[0]["data"]} />
+          ) : accountsFound !== null && accountsFound > 0 && errors.length > 0 ? null : (
+            <div
+              className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed py-16"
+              style={{ borderColor: "var(--border-primary)" }}
+            >
+              <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
+                {accountsFound === 0
+                  ? "No Shopify stores assigned to this client."
+                  : "No data available for this period."}
+              </p>
+              {accountsFound === 0 && (
+                <Link href="/dashboard/data-sources" className="mt-2 text-sm" style={{ color: "var(--accent-primary)" }}>
+                  Assign data sources
+                </Link>
+              )}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
