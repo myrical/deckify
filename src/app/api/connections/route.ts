@@ -39,6 +39,7 @@ export async function GET() {
       .filter((account) => account.connection !== null)
       .map((account) => ({
         platform: account.platform,
+        connected: true,
         accountName: account.name,
         accountId: account.platformId,
         connectedAt: account.connection!.connectedAt.toISOString(),
