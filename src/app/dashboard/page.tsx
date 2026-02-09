@@ -8,7 +8,7 @@ import { MetaView } from "./components/meta-view";
 import { GoogleView } from "./components/google-view";
 import { ShopifyView } from "./components/shopify-view";
 import { ConnectAccounts } from "./components/connect-accounts";
-import { ClientsSection } from "./components/clients-section";
+import { DataSources } from "./components/data-sources";
 
 export default function DashboardPage() {
   const [activeView, setActiveView] = useState<PlatformView>("aggregate");
@@ -21,12 +21,17 @@ export default function DashboardPage() {
       <NavHeader />
 
       <main className="mx-auto max-w-7xl px-6 py-8">
-        {/* Connect Accounts section */}
+        {/* Step 1: Connect Platforms */}
         <div className="mb-8">
           <ConnectAccounts />
         </div>
 
-        {/* Platform Tabs + Date Picker row */}
+        {/* Step 2: Data Sources — discovered accounts with client assignment */}
+        <div className="mb-8">
+          <DataSources />
+        </div>
+
+        {/* Analytics Section */}
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between animate-fade-in">
           <PlatformTabs
             active={activeView}
@@ -61,34 +66,11 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Active View with animation */}
         <div key={activeView} className="animate-fade-in">
           {activeView === "aggregate" && <AggregateView />}
           {activeView === "meta" && <MetaView />}
           {activeView === "google" && <GoogleView />}
           {activeView === "shopify" && <ShopifyView />}
-        </div>
-
-        {/* Clients & Recent Decks (below the platform views) */}
-        <div className="mt-10 grid gap-6 lg:grid-cols-2 animate-fade-in" style={{ animationDelay: "200ms" }}>
-          <ClientsSection />
-
-          <section
-            className="rounded-xl p-6"
-            style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}
-          >
-            <h2 className="mb-4 text-base font-semibold" style={{ color: "var(--text-primary)" }}>
-              Recent Decks
-            </h2>
-            <div
-              className="flex items-center justify-center rounded-lg py-8"
-              style={{ background: "var(--bg-secondary)" }}
-            >
-              <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
-                No decks generated yet.
-              </p>
-            </div>
-          </section>
         </div>
       </main>
     </div>
