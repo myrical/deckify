@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { MetaView } from "../components/meta-view";
 import { AnalyticsErrorBanner } from "../components/analytics-error-banner";
+import { AnalyticsSkeleton } from "../components/loading-skeleton";
 
 interface ClientOption {
   id: string;
@@ -26,6 +27,7 @@ export default function MetaAdsPage() {
 
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [loading, setLoading] = useState(true);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [analyticsData, setAnalyticsData] = useState<Record<string, unknown> | null>(null);
   const [errors, setErrors] = useState<AnalyticsError[]>([]);
   const [accountsFound, setAccountsFound] = useState<number | null>(null);
@@ -34,11 +36,10 @@ export default function MetaAdsPage() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch("/api/data-sources?platform=meta&status=assigned&limit=100");
+        const res = await fetch("/api/data-sources?platform=meta&status=assigned&limit=500");
         if (res.ok) {
           const json = await res.json();
           setClients(json.clients ?? []);
-          // Auto-select first client if none selected
           if (!clientId && json.clients?.length > 0) {
             router.replace(`/dashboard/meta?client=${json.clients[0].id}`);
           }
@@ -54,6 +55,8 @@ export default function MetaAdsPage() {
   // Fetch analytics for selected client
   const fetchAnalytics = useCallback(async () => {
     if (!clientId) return;
+    setAnalyticsLoading(true);
+    setAnalyticsData(null);
     setErrors([]);
     setAccountsFound(null);
     try {
@@ -65,35 +68,51 @@ export default function MetaAdsPage() {
         const summaries = json.data ?? [];
         if (summaries.length > 0) {
           const s = summaries[0];
+          const m = s.metrics ?? {};
           setAnalyticsData({
             accountName: s.account?.name ?? "Meta Ads",
-            spend: s.metrics?.spend ?? 0,
-            impressions: s.metrics?.impressions ?? 0,
-            clicks: s.metrics?.clicks ?? 0,
-            conversions: s.metrics?.conversions ?? 0,
-            roas: s.metrics?.roas ?? 0,
-            ctr: s.metrics?.ctr ?? 0,
-            cpc: s.metrics?.cpc ?? 0,
-            cpa: s.metrics?.cpa ?? 0,
-            campaigns: (s.campaigns ?? []).map((c: Record<string, unknown>) => ({
-              id: c.id,
-              name: c.name,
-              status: c.status,
-              spend: (c.metrics as Record<string, unknown>)?.spend ?? 0,
-              impressions: (c.metrics as Record<string, unknown>)?.impressions ?? 0,
-              clicks: (c.metrics as Record<string, unknown>)?.clicks ?? 0,
-              conversions: (c.metrics as Record<string, unknown>)?.conversions ?? 0,
-              cpa: (c.metrics as Record<string, unknown>)?.cpa ?? 0,
-              roas: (c.metrics as Record<string, unknown>)?.roas ?? 0,
-              adSets: [],
-            })),
+            spend: m.spend ?? 0,
+            revenue: m.revenue ?? 0,
+            impressions: m.impressions ?? 0,
+            clicks: m.clicks ?? 0,
+            conversions: m.conversions ?? 0,
+            roas: m.roas ?? 0,
+            ctr: m.ctr ?? 0,
+            cpc: m.cpc ?? 0,
+            cpa: m.cpa ?? 0,
+            campaigns: (s.campaigns ?? []).map((c: Record<string, unknown>) => {
+              const cm = c.metrics as Record<string, number> | undefined;
+              return {
+                id: c.id,
+                name: c.name,
+                status: c.status,
+                spend: cm?.spend ?? 0,
+                revenue: cm?.revenue ?? 0,
+                impressions: cm?.impressions ?? 0,
+                clicks: cm?.clicks ?? 0,
+                conversions: cm?.conversions ?? 0,
+                cpa: cm?.cpa ?? 0,
+                roas: cm?.roas ?? 0,
+                adSets: [],
+              };
+            }),
             creatives: [],
+            timeSeries: (s.timeSeries ?? []).map((ts: Record<string, unknown>) => {
+              const tm = ts.metrics as Record<string, number> | undefined;
+              return {
+                date: ts.date as string,
+                spend: tm?.spend ?? 0,
+                revenue: tm?.revenue ?? 0,
+                roas: tm?.roas ?? 0,
+              };
+            }),
             previousPeriod: s.previousPeriodMetrics
               ? {
                   spend: s.previousPeriodMetrics.spend,
                   conversions: s.previousPeriodMetrics.conversions,
                   roas: s.previousPeriodMetrics.roas,
                   cpa: s.previousPeriodMetrics.cpa,
+                  revenue: s.previousPeriodMetrics.revenue,
                 }
               : undefined,
           });
@@ -103,21 +122,14 @@ export default function MetaAdsPage() {
       }
     } catch {
       // silent
+    } finally {
+      setAnalyticsLoading(false);
     }
   }, [clientId]);
 
   useEffect(() => {
     fetchAnalytics();
   }, [fetchAnalytics]);
-
-  if (loading) {
-    return (
-      <div className="p-6">
-        <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Meta Ads</h1>
-        <p className="mt-2 text-sm" style={{ color: "var(--text-tertiary)" }}>Loading...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="p-6">
@@ -147,7 +159,9 @@ export default function MetaAdsPage() {
         )}
       </div>
 
-      {clients.length === 0 ? (
+      {loading || analyticsLoading ? (
+        <AnalyticsSkeleton variant="meta" />
+      ) : clients.length === 0 ? (
         <div
           className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed py-16"
           style={{ borderColor: "var(--border-primary)" }}

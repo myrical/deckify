@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ShopifyView } from "../components/shopify-view";
 import { AnalyticsErrorBanner } from "../components/analytics-error-banner";
+import { AnalyticsSkeleton } from "../components/loading-skeleton";
 
 interface ClientOption {
   id: string;
@@ -26,6 +27,7 @@ export default function ShopifyPage() {
 
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [loading, setLoading] = useState(true);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [analyticsData, setAnalyticsData] = useState<Record<string, unknown> | null>(null);
   const [errors, setErrors] = useState<AnalyticsError[]>([]);
   const [accountsFound, setAccountsFound] = useState<number | null>(null);
@@ -33,7 +35,7 @@ export default function ShopifyPage() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch("/api/data-sources?platform=shopify&status=assigned&limit=100");
+        const res = await fetch("/api/data-sources?platform=shopify&status=assigned&limit=500");
         if (res.ok) {
           const json = await res.json();
           setClients(json.clients ?? []);
@@ -51,6 +53,8 @@ export default function ShopifyPage() {
 
   const fetchAnalytics = useCallback(async () => {
     if (!clientId) return;
+    setAnalyticsLoading(true);
+    setAnalyticsData(null);
     setErrors([]);
     setAccountsFound(null);
     try {
@@ -62,15 +66,16 @@ export default function ShopifyPage() {
         const summaries = json.data ?? [];
         if (summaries.length > 0) {
           const s = summaries[0];
+          const m = s.metrics ?? {};
           setAnalyticsData({
             storeName: s.account?.name ?? "Shopify Store",
-            revenue: s.metrics?.revenue ?? 0,
-            orders: s.metrics?.orders ?? 0,
-            averageOrderValue: s.metrics?.averageOrderValue ?? 0,
-            newCustomers: s.metrics?.newCustomers ?? 0,
-            returningCustomers: s.metrics?.returningCustomers ?? 0,
-            refunds: s.metrics?.refunds ?? 0,
-            refundAmount: s.metrics?.refundAmount ?? 0,
+            revenue: m.revenue ?? 0,
+            orders: m.orders ?? 0,
+            averageOrderValue: m.averageOrderValue ?? 0,
+            newCustomers: m.newCustomers ?? 0,
+            returningCustomers: m.returningCustomers ?? 0,
+            refunds: m.refunds ?? 0,
+            refundAmount: m.refundAmount ?? 0,
             topProducts: (s.topProducts ?? []).map((p: Record<string, unknown>) => ({
               id: (p.id as string) ?? "",
               name: (p.name as string) ?? "",
@@ -78,6 +83,14 @@ export default function ShopifyPage() {
               revenue: (p.revenue as number) ?? 0,
               unitsSold: (p.unitsSold as number) ?? 0,
             })),
+            timeSeries: (s.timeSeries ?? []).map((ts: Record<string, unknown>) => {
+              const tm = ts.metrics as Record<string, number> | undefined;
+              return {
+                date: ts.date as string,
+                revenue: tm?.revenue ?? 0,
+                orders: tm?.orders ?? 0,
+              };
+            }),
             previousPeriod: s.previousPeriodMetrics
               ? {
                   revenue: s.previousPeriodMetrics.revenue,
@@ -93,21 +106,14 @@ export default function ShopifyPage() {
       }
     } catch {
       // silent
+    } finally {
+      setAnalyticsLoading(false);
     }
   }, [clientId]);
 
   useEffect(() => {
     fetchAnalytics();
   }, [fetchAnalytics]);
-
-  if (loading) {
-    return (
-      <div className="p-6">
-        <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Shopify</h1>
-        <p className="mt-2 text-sm" style={{ color: "var(--text-tertiary)" }}>Loading...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="p-6">
@@ -136,7 +142,9 @@ export default function ShopifyPage() {
         )}
       </div>
 
-      {clients.length === 0 ? (
+      {loading || analyticsLoading ? (
+        <AnalyticsSkeleton variant="shopify" />
+      ) : clients.length === 0 ? (
         <div
           className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed py-16"
           style={{ borderColor: "var(--border-primary)" }}
