@@ -104,9 +104,12 @@ export async function GET(request: Request) {
       `${process.env.NEXTAUTH_URL}/dashboard?${params}`
     );
   } catch (err) {
-    const message = err instanceof PrismError ? err.code : "unknown_error";
+    console.error("[Meta Callback Error]", err);
+    const code = err instanceof PrismError ? err.code : "unknown_error";
+    const detail = err instanceof Error ? err.message : String(err);
+    const params = new URLSearchParams({ error: code, detail });
     return NextResponse.redirect(
-      `${process.env.NEXTAUTH_URL}/dashboard?error=${message}`
+      `${process.env.NEXTAUTH_URL}/dashboard?${params}`
     );
   }
 }
