@@ -14,6 +14,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "shop domain is required (e.g. mystore.myshopify.com)" }, { status: 400 });
   }
 
+  if (!process.env.SHOPIFY_CLIENT_ID || !process.env.SHOPIFY_CLIENT_SECRET) {
+    return NextResponse.json(
+      { error: "Shopify is not configured. Set SHOPIFY_CLIENT_ID and SHOPIFY_CLIENT_SECRET environment variables." },
+      { status: 501 }
+    );
+  }
+
   const connector = new ShopifyConnector();
   const redirectUri = `${process.env.NEXTAUTH_URL}/api/shopify/callback`;
   // Encode both clientId and shop domain in state so we can retrieve them on callback

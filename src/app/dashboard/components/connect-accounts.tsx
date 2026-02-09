@@ -128,6 +128,8 @@ export function ConnectAccounts() {
   const [shopDomain, setShopDomain] = useState("");
   const [shopError, setShopError] = useState("");
   const [disconnecting, setDisconnecting] = useState<PlatformId | null>(null);
+  const [connecting, setConnecting] = useState<PlatformId | null>(null);
+  const [connectError, setConnectError] = useState<{ platform: PlatformId; message: string } | null>(null);
 
   /* Fetch connection status on mount -------------------------------- */
   const fetchConnections = useCallback(async () => {
@@ -157,24 +159,56 @@ export function ConnectAccounts() {
   const connectedCount = connections.filter((c) => c.connected).length;
 
   /* Handlers -------------------------------------------------------- */
-  const handleConnect = (platformId: PlatformId) => {
+  const handleConnect = async (platformId: PlatformId) => {
+    setConnectError(null);
+    setConnecting(platformId);
+
+    let authUrl: string;
     if (platformId === "shopify") {
       const domain = shopDomain.trim();
       if (!domain) {
         setShopError("Please enter your Shopify store domain");
+        setConnecting(null);
         return;
       }
       if (!domain.includes(".myshopify.com")) {
         setShopError("Domain must end with .myshopify.com");
+        setConnecting(null);
         return;
       }
       setShopError("");
-      window.location.href = `/api/shopify/auth?clientId=default&shop=${encodeURIComponent(domain)}`;
-      return;
+      authUrl = `/api/shopify/auth?clientId=default&shop=${encodeURIComponent(domain)}`;
+    } else {
+      const platform = PLATFORMS.find((p) => p.id === platformId);
+      if (!platform) return;
+      authUrl = platform.authUrl;
     }
-    const platform = PLATFORMS.find((p) => p.id === platformId);
-    if (platform) {
-      window.location.href = platform.authUrl;
+
+    try {
+      const res = await fetch(authUrl, { redirect: "manual" });
+      if (res.status === 501) {
+        const data = await res.json();
+        setConnectError({ platform: platformId, message: data.error || "This platform is not configured yet." });
+        setConnecting(null);
+        return;
+      }
+      if (res.status === 400) {
+        const data = await res.json();
+        setConnectError({ platform: platformId, message: data.error });
+        setConnecting(null);
+        return;
+      }
+      // Successful redirect — follow it
+      const location = res.headers.get("location");
+      if (location) {
+        window.location.href = location;
+      } else {
+        // Fallback: navigate directly
+        window.location.href = authUrl;
+      }
+    } catch {
+      setConnectError({ platform: platformId, message: "Failed to connect. Please try again." });
+      setConnecting(null);
     }
   };
 
@@ -422,15 +456,23 @@ export function ConnectAccounts() {
 
                   <button
                     onClick={() => handleConnect(platform.id)}
+                    disabled={connecting === platform.id}
                     className="flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition-all hover:opacity-90 hover:shadow-md"
                     style={{
                       background: platform.brandColor,
                       color: "#ffffff",
+                      opacity: connecting === platform.id ? 0.7 : 1,
+                      cursor: connecting === platform.id ? "not-allowed" : "pointer",
                     }}
                   >
                     <LinkIcon />
-                    Connect {platform.label}
+                    {connecting === platform.id ? "Connecting..." : `Connect ${platform.label}`}
                   </button>
+                  {connectError?.platform === platform.id && (
+                    <p className="mt-2 text-xs" style={{ color: "var(--status-negative, #ef4444)" }}>
+                      {connectError.message}
+                    </p>
+                  )}
                 </div>
               )}
             </div>

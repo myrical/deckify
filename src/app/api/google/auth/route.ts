@@ -11,8 +11,8 @@ export async function GET(request: Request) {
   const googleClientId = process.env.GOOGLE_CLIENT_ID;
   if (!googleClientId) {
     return NextResponse.json(
-      { error: "GOOGLE_CLIENT_ID is not configured" },
-      { status: 500 }
+      { error: "Google Ads is not configured. Set GOOGLE_CLIENT_ID environment variable." },
+      { status: 501 }
     );
   }
 
