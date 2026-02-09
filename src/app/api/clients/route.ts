@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { ensureOrgAndClient } from "@/lib/ensure-org";
+import { ensureOrg } from "@/lib/ensure-org";
 
 /** GET /api/clients — list all clients for the current user's org */
 export async function GET() {
@@ -19,9 +19,7 @@ export async function GET() {
           clients: {
             orderBy: { createdAt: "asc" },
             include: {
-              adAccounts: {
-                include: { connection: true },
-              },
+              adAccounts: true,
             },
           },
         },
@@ -43,7 +41,7 @@ export async function GET() {
       platformId: acc.platformId,
       name: acc.name,
       status: acc.status,
-      connected: acc.connection !== null,
+      isActive: acc.isActive,
     })),
   }));
 
@@ -64,8 +62,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Client name is required" }, { status: 400 });
   }
 
-  // Ensure org exists (auto-create if first time)
-  const { orgId } = await ensureOrgAndClient(session.user.id);
+  const orgId = await ensureOrg(session.user.id);
 
   const client = await db.client.create({
     data: { name, orgId },

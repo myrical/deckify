@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { ensureOrgAndClient } from "@/lib/ensure-org";
+import { ensureOrg } from "@/lib/ensure-org";
 import { ShopifyConnector } from "@/core/ad-platforms/shopify";
 import { PrismError } from "@/core/errors/types";
 
@@ -18,13 +18,11 @@ export async function GET(request: Request) {
     );
   }
 
-  // Recover clientId and shop from state
-  let stateClientId: string | undefined;
+  // Recover shop from state
   let shop = shopParam ?? "";
   try {
     if (stateRaw) {
       const parsed = JSON.parse(stateRaw);
-      stateClientId = parsed.clientId;
       if (parsed.shop) shop = parsed.shop;
     }
   } catch {
@@ -37,7 +35,6 @@ export async function GET(request: Request) {
     );
   }
 
-  // Get the current user session
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.redirect(
@@ -54,12 +51,40 @@ export async function GET(request: Request) {
       shop,
     });
 
-    // Ensure org and client exist for this user
-    const { clientId } = await ensureOrgAndClient(session.user.id);
+    const orgId = await ensureOrg(session.user.id);
 
-    // Use the shop domain as the platformId for uniqueness
-    // and store it in the name field as well for display
-    const adAccount = await db.adAccount.upsert({
+    // Shopify: one auth = one shop, so platformUserId is the shop domain
+    const platformAuth = await db.platformAuth.upsert({
+      where: {
+        orgId_platform_platformUserId: {
+          orgId,
+          platform: "shopify",
+          platformUserId: shop,
+        },
+      },
+      create: {
+        platform: "shopify",
+        orgId,
+        connectedByUserId: session.user.id,
+        accessToken: tokenSet.accessToken,
+        refreshToken: tokenSet.refreshToken ?? null,
+        tokenExpiresAt: tokenSet.expiresAt ?? null,
+        scopes: tokenSet.scopes,
+        platformUserId: shop,
+        platformMeta: { shop },
+      },
+      update: {
+        accessToken: tokenSet.accessToken,
+        refreshToken: tokenSet.refreshToken ?? null,
+        tokenExpiresAt: tokenSet.expiresAt ?? null,
+        scopes: tokenSet.scopes,
+        status: "active",
+        lastRefreshedAt: new Date(),
+      },
+    });
+
+    // Create the single ad account for this shop (unassigned)
+    await db.adAccount.upsert({
       where: {
         platform_platformId: {
           platform: "shopify",
@@ -73,46 +98,28 @@ export async function GET(request: Request) {
         currency: "USD",
         timezone: "America/New_York",
         status: "active",
-        clientId,
+        platformAuthId: platformAuth.id,
       },
       update: {
         name: shop,
         status: "active",
+        platformAuthId: platformAuth.id,
       },
     });
 
-    // Upsert the connection with tokens
-    // Shopify offline tokens don't expire
-    await db.adConnection.upsert({
-      where: { adAccountId: adAccount.id },
-      create: {
-        adAccountId: adAccount.id,
-        accessToken: tokenSet.accessToken,
-        refreshToken: tokenSet.refreshToken ?? null,
-        tokenExpiresAt: tokenSet.expiresAt ?? null,
-        scopes: tokenSet.scopes,
-      },
-      update: {
-        accessToken: tokenSet.accessToken,
-        refreshToken: tokenSet.refreshToken ?? null,
-        tokenExpiresAt: tokenSet.expiresAt ?? null,
-        scopes: tokenSet.scopes,
-        lastRefreshedAt: new Date(),
-      },
-    });
-
-    const params = new URLSearchParams({
-      success: "shopify_connected",
-      ...(stateClientId ? { clientId: stateClientId } : {}),
+    await db.platformAuth.update({
+      where: { id: platformAuth.id },
+      data: { lastSyncAt: new Date() },
     });
 
     return NextResponse.redirect(
-      `${process.env.NEXTAUTH_URL}/dashboard?${params}`
+      `${process.env.NEXTAUTH_URL}/dashboard?success=shopify_connected`
     );
   } catch (err) {
-    const message = err instanceof PrismError ? err.code : "unknown_error";
+    console.error("[Shopify Callback Error]", err);
+    const errCode = err instanceof PrismError ? err.code : "unknown_error";
     return NextResponse.redirect(
-      `${process.env.NEXTAUTH_URL}/dashboard?error=${message}`
+      `${process.env.NEXTAUTH_URL}/dashboard?error=${errCode}`
     );
   }
 }

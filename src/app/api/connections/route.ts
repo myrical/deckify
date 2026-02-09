@@ -9,19 +9,17 @@ export async function GET() {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  // Find the user's org membership → org → clients → adAccounts with connections
+  // Find the user's org → platformAuths (org-level connections)
   const membership = await db.orgMembership.findFirst({
     where: { userId: session.user.id },
     include: {
       organization: {
         include: {
-          clients: {
+          platformAuths: {
+            where: { status: "active" },
             include: {
-              adAccounts: {
-                include: {
-                  connection: true,
-                },
-              },
+              connectedBy: { select: { name: true, email: true } },
+              adAccounts: true,
             },
           },
         },
@@ -30,22 +28,31 @@ export async function GET() {
   });
 
   if (!membership) {
-    return NextResponse.json({ connections: [] });
+    return NextResponse.json({ connections: [], dataSources: [] });
   }
 
-  // Flatten the nested structure into a list of connections
-  const connections = membership.organization.clients.flatMap((client) =>
-    client.adAccounts
-      .filter((account) => account.connection !== null)
-      .map((account) => ({
-        platform: account.platform,
-        connected: true,
-        accountName: account.name,
-        accountId: account.platformId,
-        connectedAt: account.connection!.connectedAt.toISOString(),
-        status: account.status,
-      }))
+  // Platform-level connections (for the ConnectAccounts UI)
+  const connections = membership.organization.platformAuths.map((auth) => ({
+    platform: auth.platform,
+    connected: true,
+    connectedBy: auth.connectedBy.name ?? auth.connectedBy.email ?? "Unknown",
+    connectedAt: auth.connectedAt.toISOString(),
+    lastSyncAt: auth.lastSyncAt?.toISOString() ?? null,
+    accountCount: auth.adAccounts.length,
+  }));
+
+  // All data sources (ad accounts) across all platform auths
+  const dataSources = membership.organization.platformAuths.flatMap((auth) =>
+    auth.adAccounts.map((account) => ({
+      id: account.id,
+      platform: account.platform,
+      platformId: account.platformId,
+      name: account.name,
+      status: account.status,
+      clientId: account.clientId,
+      isActive: account.isActive,
+    }))
   );
 
-  return NextResponse.json({ connections });
+  return NextResponse.json({ connections, dataSources });
 }

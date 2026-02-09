@@ -58,6 +58,7 @@ model User {
   accounts       Account[]
   sessions       Session[]
   memberships    OrgMembership[]
+  platformAuths  PlatformAuth[] @relation("PlatformAuthConnectedBy")
 }
 
 model Organization {
@@ -66,9 +67,10 @@ model Organization {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  members OrgMembership[]
-  clients Client[]
-  presets Preset[]        // org-level shared presets
+  members       OrgMembership[]
+  clients       Client[]
+  platformAuths PlatformAuth[]
+  presets       Preset[]        // org-level shared presets
 }
 
 model OrgMembership {
@@ -83,7 +85,32 @@ model OrgMembership {
   @@unique([userId, orgId])
 }
 
-// ─── Clients & Ad Accounts ──────────────────────────────────────────────────
+// ─── Platform Connections (org-level OAuth) ─────────────────────────────────
+
+model PlatformAuth {
+  id                String    @id @default(cuid())
+  platform          String    // "meta" | "google" | "shopify"
+  orgId             String
+  connectedByUserId String
+  accessToken       String    @db.Text  // encrypted at application level
+  refreshToken      String?   @db.Text  // encrypted at application level
+  tokenExpiresAt    DateTime?
+  scopes            String[]  @default([])
+  platformUserId    String?   // Meta user ID, Google email — identifies who authed
+  platformMeta      Json?     // platform-specific extras, e.g. { shop: "x.myshopify.com" }
+  status            String    @default("active") // active, expired, revoked
+  connectedAt       DateTime  @default(now())
+  lastRefreshedAt   DateTime  @default(now())
+  lastSyncAt        DateTime? // when we last called listAccounts with this token
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  connectedBy  User         @relation("PlatformAuthConnectedBy", fields: [connectedByUserId], references: [id])
+  adAccounts   AdAccount[]
+
+  @@unique([orgId, platform, platformUserId])
+}
+
+// ─── Clients & Data Sources (Ad Accounts) ───────────────────────────────────
 
 model Client {
   id        String   @id @default(cuid())
@@ -99,33 +126,22 @@ model Client {
 
 model AdAccount {
   id             String   @id @default(cuid())
-  platform       String   // "meta" | "google"
+  platform       String   // "meta" | "google" | "shopify"
   platformId     String   // the actual ad account ID on the platform
   name           String
   currency       String   @default("USD")
   timezone       String   @default("America/New_York")
   status         String   @default("active") // active, disabled, disconnected
-  clientId       String
+  clientId       String?  // nullable — null means unassigned (discovered but not organized)
+  platformAuthId String   // which PlatformAuth provides the token for API calls
+  isActive       Boolean  @default(true) // user toggle: include in reports/billing or not
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  client     Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  connection AdConnection?
+  client       Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  platformAuth PlatformAuth @relation(fields: [platformAuthId], references: [id], onDelete: Cascade)
 
   @@unique([platform, platformId])
-}
-
-model AdConnection {
-  id              String   @id @default(cuid())
-  adAccountId     String   @unique
-  accessToken     String   @db.Text  // encrypted at application level
-  refreshToken    String?  @db.Text  // encrypted at application level
-  tokenExpiresAt  DateTime?
-  scopes          String[] @default([])
-  connectedAt     DateTime @default(now())
-  lastRefreshedAt DateTime @default(now())
-
-  adAccount AdAccount @relation(fields: [adAccountId], references: [id], onDelete: Cascade)
 }
 
 // ─── Google Slides Output Connection ────────────────────────────────────────

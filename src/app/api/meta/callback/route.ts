@@ -2,14 +2,14 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { ensureOrgAndClient } from "@/lib/ensure-org";
+import { ensureOrg } from "@/lib/ensure-org";
 import { MetaAdsConnector } from "@/core/ad-platforms/meta";
 import { PrismError } from "@/core/errors/types";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
-  const state = searchParams.get("state"); // clientId passed as state
+  const state = searchParams.get("state");
   const error = searchParams.get("error");
 
   if (error) {
@@ -24,7 +24,6 @@ export async function GET(request: Request) {
     );
   }
 
-  // Get the current user session
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.redirect(
@@ -43,15 +42,44 @@ export async function GET(request: Request) {
       redirectUri,
     });
 
-    // Ensure org and client exist for this user
-    const { clientId } = await ensureOrgAndClient(session.user.id);
+    // Ensure org exists for this user
+    const orgId = await ensureOrg(session.user.id);
 
-    // List the user's ad accounts from Meta
+    // Upsert PlatformAuth (one per org + platform + user combo)
+    const platformAuth = await db.platformAuth.upsert({
+      where: {
+        orgId_platform_platformUserId: {
+          orgId,
+          platform: "meta",
+          platformUserId: session.user.id,
+        },
+      },
+      create: {
+        platform: "meta",
+        orgId,
+        connectedByUserId: session.user.id,
+        accessToken: tokenSet.accessToken,
+        refreshToken: tokenSet.refreshToken ?? null,
+        tokenExpiresAt: tokenSet.expiresAt ?? null,
+        scopes: tokenSet.scopes,
+        platformUserId: session.user.id,
+      },
+      update: {
+        accessToken: tokenSet.accessToken,
+        refreshToken: tokenSet.refreshToken ?? null,
+        tokenExpiresAt: tokenSet.expiresAt ?? null,
+        scopes: tokenSet.scopes,
+        status: "active",
+        lastRefreshedAt: new Date(),
+      },
+    });
+
+    // Discover all ad accounts accessible with this token
     const adAccounts = await connector.listAccounts(tokenSet);
 
-    // For each ad account, upsert AdAccount + create/update AdConnection
+    // Upsert each as unassigned (clientId: null) — user organizes later
     for (const account of adAccounts) {
-      const adAccount = await db.adAccount.upsert({
+      await db.adAccount.upsert({
         where: {
           platform_platformId: {
             platform: "meta",
@@ -65,39 +93,27 @@ export async function GET(request: Request) {
           currency: account.currency,
           timezone: account.timezone,
           status: account.status,
-          clientId,
+          platformAuthId: platformAuth.id,
         },
         update: {
           name: account.name,
           currency: account.currency,
           timezone: account.timezone,
           status: account.status,
-        },
-      });
-
-      // Upsert the connection (one-to-one via unique adAccountId)
-      await db.adConnection.upsert({
-        where: { adAccountId: adAccount.id },
-        create: {
-          adAccountId: adAccount.id,
-          accessToken: tokenSet.accessToken,
-          refreshToken: tokenSet.refreshToken ?? null,
-          tokenExpiresAt: tokenSet.expiresAt ?? null,
-          scopes: tokenSet.scopes,
-        },
-        update: {
-          accessToken: tokenSet.accessToken,
-          refreshToken: tokenSet.refreshToken ?? null,
-          tokenExpiresAt: tokenSet.expiresAt ?? null,
-          scopes: tokenSet.scopes,
-          lastRefreshedAt: new Date(),
+          platformAuthId: platformAuth.id,
         },
       });
     }
 
+    // Update last sync time
+    await db.platformAuth.update({
+      where: { id: platformAuth.id },
+      data: { lastSyncAt: new Date() },
+    });
+
     const params = new URLSearchParams({
       success: "meta_connected",
-      ...(state ? { clientId: state } : {}),
+      accounts: String(adAccounts.length),
     });
 
     return NextResponse.redirect(
@@ -105,9 +121,9 @@ export async function GET(request: Request) {
     );
   } catch (err) {
     console.error("[Meta Callback Error]", err);
-    const code = err instanceof PrismError ? err.code : "unknown_error";
+    const errCode = err instanceof PrismError ? err.code : "unknown_error";
     const detail = err instanceof Error ? err.message : String(err);
-    const params = new URLSearchParams({ error: code, detail });
+    const params = new URLSearchParams({ error: errCode, detail });
     return NextResponse.redirect(
       `${process.env.NEXTAUTH_URL}/dashboard?${params}`
     );

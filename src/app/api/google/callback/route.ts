@@ -2,14 +2,13 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { ensureOrgAndClient } from "@/lib/ensure-org";
+import { ensureOrg } from "@/lib/ensure-org";
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
-  const state = searchParams.get("state"); // clientId passed as state
   const error = searchParams.get("error");
 
   if (error) {
@@ -24,7 +23,6 @@ export async function GET(request: Request) {
     );
   }
 
-  // Get the current user session
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.redirect(
@@ -43,8 +41,7 @@ export async function GET(request: Request) {
 
     const redirectUri = `${process.env.NEXTAUTH_URL}/api/google/callback`;
 
-    // Exchange authorization code for tokens using raw fetch
-    // (avoids requiring GOOGLE_ADS_DEVELOPER_TOKEN for the OAuth flow)
+    // Exchange authorization code for tokens
     const tokenResponse = await fetch(GOOGLE_TOKEN_URL, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -72,66 +69,70 @@ export async function GET(request: Request) {
       scope: string;
     };
 
-    // Ensure org and client exist for this user
-    const { clientId } = await ensureOrgAndClient(session.user.id);
+    const orgId = await ensureOrg(session.user.id);
+    const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000);
+    const scopes = tokenData.scope ? tokenData.scope.split(" ") : [];
 
-    // Create a placeholder AdAccount for Google Ads.
-    // We use the user ID as a temporary platformId since listing actual
-    // Google Ads customer IDs requires the developer token (which the user
-    // might not have yet). This will be updated when they first fetch data.
-    const placeholderPlatformId = `google_${session.user.id}`;
-
-    const adAccount = await db.adAccount.upsert({
+    // Upsert PlatformAuth for Google
+    const platformAuth = await db.platformAuth.upsert({
       where: {
-        platform_platformId: {
+        orgId_platform_platformUserId: {
+          orgId,
           platform: "google",
-          platformId: placeholderPlatformId,
+          platformUserId: session.user.id,
         },
       },
       create: {
         platform: "google",
-        platformId: placeholderPlatformId,
-        name: "Google Ads Account",
-        currency: "USD",
-        timezone: "America/New_York",
-        status: "active",
-        clientId,
-      },
-      update: {
-        name: "Google Ads Account",
-        status: "active",
-      },
-    });
-
-    // Upsert the connection with tokens
-    const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000);
-    const scopes = tokenData.scope ? tokenData.scope.split(" ") : [];
-
-    await db.adConnection.upsert({
-      where: { adAccountId: adAccount.id },
-      create: {
-        adAccountId: adAccount.id,
+        orgId,
+        connectedByUserId: session.user.id,
         accessToken: tokenData.access_token,
         refreshToken: tokenData.refresh_token ?? null,
         tokenExpiresAt: expiresAt,
         scopes,
+        platformUserId: session.user.id,
       },
       update: {
         accessToken: tokenData.access_token,
         refreshToken: tokenData.refresh_token ?? null,
         tokenExpiresAt: expiresAt,
         scopes,
+        status: "active",
         lastRefreshedAt: new Date(),
       },
     });
 
-    const params = new URLSearchParams({
-      success: "google_connected",
-      ...(state ? { clientId: state } : {}),
+    // Create a placeholder account — actual accounts discovered via sync
+    // when the user has a Google Ads developer token configured
+    await db.adAccount.upsert({
+      where: {
+        platform_platformId: {
+          platform: "google",
+          platformId: `google_${session.user.id}`,
+        },
+      },
+      create: {
+        platform: "google",
+        platformId: `google_${session.user.id}`,
+        name: "Google Ads Account",
+        currency: "USD",
+        timezone: "America/New_York",
+        status: "active",
+        platformAuthId: platformAuth.id,
+      },
+      update: {
+        status: "active",
+        platformAuthId: platformAuth.id,
+      },
+    });
+
+    await db.platformAuth.update({
+      where: { id: platformAuth.id },
+      data: { lastSyncAt: new Date() },
     });
 
     return NextResponse.redirect(
-      `${process.env.NEXTAUTH_URL}/dashboard?${params}`
+      `${process.env.NEXTAUTH_URL}/dashboard?success=google_connected`
     );
   } catch (err) {
     console.error("Google OAuth callback error:", err);
