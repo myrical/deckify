@@ -14,13 +14,13 @@ export async function GET(request: Request) {
 
   if (error) {
     return NextResponse.redirect(
-      `${process.env.NEXTAUTH_URL}/dashboard?error=meta_auth_denied`
+      `${process.env.NEXTAUTH_URL}/dashboard/data-sources?error=meta_auth_denied`
     );
   }
 
   if (!code) {
     return NextResponse.redirect(
-      `${process.env.NEXTAUTH_URL}/dashboard?error=meta_no_code`
+      `${process.env.NEXTAUTH_URL}/dashboard/data-sources?error=meta_no_code`
     );
   }
 
@@ -117,7 +117,7 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.redirect(
-      `${process.env.NEXTAUTH_URL}/dashboard?${params}`
+      `${process.env.NEXTAUTH_URL}/dashboard/data-sources?${params}`
     );
   } catch (err) {
     console.error("[Meta Callback Error]", err);
@@ -125,7 +125,7 @@ export async function GET(request: Request) {
     const detail = err instanceof Error ? err.message : String(err);
     const params = new URLSearchParams({ error: errCode, detail });
     return NextResponse.redirect(
-      `${process.env.NEXTAUTH_URL}/dashboard?${params}`
+      `${process.env.NEXTAUTH_URL}/dashboard/data-sources?${params}`
     );
   }
 }

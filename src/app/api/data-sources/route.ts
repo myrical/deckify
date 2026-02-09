@@ -3,8 +3,8 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 
-/** GET /api/data-sources — list all data sources for the user's org */
-export async function GET() {
+/** GET /api/data-sources — list data sources with search, filter, pagination */
+export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
@@ -12,25 +12,61 @@ export async function GET() {
 
   const membership = await db.orgMembership.findFirst({
     where: { userId: session.user.id },
-    include: {
-      organization: {
-        include: {
-          platformAuths: {
-            where: { status: "active" },
-            include: { adAccounts: { include: { client: true } } },
-          },
-          clients: { orderBy: { createdAt: "asc" } },
-        },
-      },
-    },
   });
 
   if (!membership) {
-    return NextResponse.json({ dataSources: [], clients: [] });
+    return NextResponse.json({ dataSources: [], clients: [], total: 0, page: 1, limit: 25 });
   }
 
-  const dataSources = membership.organization.platformAuths.flatMap((auth) =>
-    auth.adAccounts.map((acc) => ({
+  const { searchParams } = new URL(request.url);
+  const search = searchParams.get("search") ?? "";
+  const platform = searchParams.get("platform") ?? "";
+  const status = searchParams.get("status") ?? "unassigned"; // unassigned | assigned | all
+  const page = Math.max(1, parseInt(searchParams.get("page") ?? "1", 10));
+  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") ?? "25", 10)));
+
+  // Build Prisma where clause
+  const orgId = membership.orgId;
+  const where: Record<string, unknown> = {
+    platformAuth: { orgId, status: "active" },
+  };
+
+  if (search) {
+    where.OR = [
+      { name: { contains: search, mode: "insensitive" } },
+      { platformId: { contains: search, mode: "insensitive" } },
+    ];
+  }
+
+  if (platform && platform !== "all") {
+    where.platform = platform;
+  }
+
+  if (status === "unassigned") {
+    where.clientId = null;
+  } else if (status === "assigned") {
+    where.clientId = { not: null };
+  }
+  // status === "all" → no clientId filter
+
+  const [dataSources, total, clients] = await Promise.all([
+    db.adAccount.findMany({
+      where,
+      include: { client: { select: { id: true, name: true } } },
+      orderBy: { name: "asc" },
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+    db.adAccount.count({ where }),
+    db.client.findMany({
+      where: { orgId },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true },
+    }),
+  ]);
+
+  return NextResponse.json({
+    dataSources: dataSources.map((acc) => ({
       id: acc.id,
       platform: acc.platform,
       platformId: acc.platformId,
@@ -39,15 +75,12 @@ export async function GET() {
       isActive: acc.isActive,
       clientId: acc.clientId,
       clientName: acc.client?.name ?? null,
-    }))
-  );
-
-  const clients = membership.organization.clients.map((c) => ({
-    id: c.id,
-    name: c.name,
-  }));
-
-  return NextResponse.json({ dataSources, clients });
+    })),
+    clients,
+    total,
+    page,
+    limit,
+  });
 }
 
 /** PATCH /api/data-sources — assign a data source to a client */
@@ -64,7 +97,6 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "dataSourceId is required" }, { status: 400 });
   }
 
-  // Verify user owns this data source via org membership
   const membership = await db.orgMembership.findFirst({
     where: { userId: session.user.id },
   });
@@ -73,7 +105,6 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Not authorized" }, { status: 403 });
   }
 
-  // Verify the ad account belongs to this org
   const adAccount = await db.adAccount.findUnique({
     where: { id: dataSourceId },
     include: { platformAuth: true },
@@ -83,7 +114,6 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Data source not found" }, { status: 404 });
   }
 
-  // If clientId provided, verify it belongs to the same org
   if (clientId) {
     const client = await db.client.findUnique({ where: { id: clientId } });
     if (!client || client.orgId !== membership.orgId) {

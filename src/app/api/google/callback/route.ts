@@ -13,13 +13,13 @@ export async function GET(request: Request) {
 
   if (error) {
     return NextResponse.redirect(
-      `${process.env.NEXTAUTH_URL}/dashboard?error=google_auth_denied`
+      `${process.env.NEXTAUTH_URL}/dashboard/data-sources?error=google_auth_denied`
     );
   }
 
   if (!code) {
     return NextResponse.redirect(
-      `${process.env.NEXTAUTH_URL}/dashboard?error=google_no_code`
+      `${process.env.NEXTAUTH_URL}/dashboard/data-sources?error=google_no_code`
     );
   }
 
@@ -35,7 +35,7 @@ export async function GET(request: Request) {
     const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
     if (!googleClientId || !googleClientSecret) {
       return NextResponse.redirect(
-        `${process.env.NEXTAUTH_URL}/dashboard?error=google_not_configured`
+        `${process.env.NEXTAUTH_URL}/dashboard/data-sources?error=google_not_configured`
       );
     }
 
@@ -58,7 +58,7 @@ export async function GET(request: Request) {
       const errorBody = await tokenResponse.text().catch(() => "");
       console.error("Google token exchange failed:", errorBody);
       return NextResponse.redirect(
-        `${process.env.NEXTAUTH_URL}/dashboard?error=google_token_exchange_failed`
+        `${process.env.NEXTAUTH_URL}/dashboard/data-sources?error=google_token_exchange_failed`
       );
     }
 
@@ -132,12 +132,12 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.redirect(
-      `${process.env.NEXTAUTH_URL}/dashboard?success=google_connected`
+      `${process.env.NEXTAUTH_URL}/dashboard/data-sources?success=google_connected`
     );
   } catch (err) {
     console.error("Google OAuth callback error:", err);
     return NextResponse.redirect(
-      `${process.env.NEXTAUTH_URL}/dashboard?error=google_connection_failed`
+      `${process.env.NEXTAUTH_URL}/dashboard/data-sources?error=google_connection_failed`
     );
   }
 }

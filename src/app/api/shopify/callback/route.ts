@@ -14,7 +14,7 @@ export async function GET(request: Request) {
 
   if (!code) {
     return NextResponse.redirect(
-      `${process.env.NEXTAUTH_URL}/dashboard?error=shopify_no_code`
+      `${process.env.NEXTAUTH_URL}/dashboard/data-sources?error=shopify_no_code`
     );
   }
 
@@ -31,7 +31,7 @@ export async function GET(request: Request) {
 
   if (!shop) {
     return NextResponse.redirect(
-      `${process.env.NEXTAUTH_URL}/dashboard?error=shopify_no_shop`
+      `${process.env.NEXTAUTH_URL}/dashboard/data-sources?error=shopify_no_shop`
     );
   }
 
@@ -113,13 +113,13 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.redirect(
-      `${process.env.NEXTAUTH_URL}/dashboard?success=shopify_connected`
+      `${process.env.NEXTAUTH_URL}/dashboard/data-sources?success=shopify_connected`
     );
   } catch (err) {
     console.error("[Shopify Callback Error]", err);
     const errCode = err instanceof PrismError ? err.code : "unknown_error";
     return NextResponse.redirect(
-      `${process.env.NEXTAUTH_URL}/dashboard?error=${errCode}`
+      `${process.env.NEXTAUTH_URL}/dashboard/data-sources?error=${errCode}`
     );
   }
 }

@@ -2,16 +2,23 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
-interface SidebarData {
-  connectedCount: number;
+interface SidebarProps {
+  connectionCount: number;
   unassignedCount: number;
   connectedPlatforms: string[];
 }
 
-const NAV_ITEMS = [
+interface NavItem {
+  href: string;
+  label: string;
+  icon: string;
+  platform?: string;
+  badge?: "unassigned" | "connections";
+}
+
+const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
   { section: "Analytics", items: [
     { href: "/dashboard", label: "Overview", icon: "chart" },
     { href: "/dashboard/meta", label: "Meta Ads", icon: "meta", platform: "meta" },
@@ -20,8 +27,8 @@ const NAV_ITEMS = [
   ]},
   { section: "Manage", items: [
     { href: "/dashboard/clients", label: "Clients", icon: "users" },
-    { href: "/dashboard/data-sources", label: "Data Sources", icon: "database", badge: "unassigned" as const },
-    { href: "/dashboard/connections", label: "Connections", icon: "plug", badge: "connections" as const },
+    { href: "/dashboard/data-sources", label: "Data Sources", icon: "database", badge: "unassigned" },
+    { href: "/dashboard/connections", label: "Connections", icon: "plug", badge: "connections" },
   ]},
 ];
 
@@ -46,29 +53,11 @@ const PLATFORM_COLORS: Record<string, string> = {
   shopify: "#96BF48",
 };
 
-export function Sidebar() {
+export function Sidebar({ connectionCount, unassignedCount, connectedPlatforms }: SidebarProps) {
   const pathname = usePathname();
-  const [data, setData] = useState<SidebarData>({ connectedCount: 0, unassignedCount: 0, connectedPlatforms: [] });
-
-  const fetchSidebarData = useCallback(async () => {
-    try {
-      const res = await fetch("/api/connections");
-      if (res.ok) {
-        const json = await res.json();
-        const platforms = (json.connections ?? []).map((c: { platform: string }) => c.platform);
-        setData({
-          connectedCount: platforms.length,
-          unassignedCount: (json.dataSources ?? []).filter((d: { clientId: string | null }) => !d.clientId).length,
-          connectedPlatforms: platforms,
-        });
-      }
-    } catch { /* silent */ }
-  }, []);
-
-  useEffect(() => { fetchSidebarData(); }, [fetchSidebarData]);
 
   return (
-    <aside className="flex h-screen w-60 flex-col border-r" style={{ background: "var(--bg-card)", borderColor: "var(--border-primary)" }}>
+    <aside className="flex h-screen w-60 shrink-0 flex-col border-r" style={{ background: "var(--bg-card)", borderColor: "var(--border-primary)" }}>
       {/* Logo */}
       <div className="flex items-center gap-2 px-5 py-4">
         <Link href="/" className="flex items-center gap-2">
@@ -92,20 +81,20 @@ export function Sidebar() {
               const isActive = item.href === "/dashboard"
                 ? pathname === "/dashboard"
                 : pathname.startsWith(item.href);
-              const isConnected = !item.platform || data.connectedPlatforms.includes(item.platform);
+              const isConnected = !item.platform || connectedPlatforms.includes(item.platform);
               const platformColor = item.platform ? PLATFORM_COLORS[item.platform] : undefined;
 
               let badge: React.ReactNode = null;
-              if (item.badge === "unassigned" && data.unassignedCount > 0) {
+              if (item.badge === "unassigned" && unassignedCount > 0) {
                 badge = (
                   <span className="rounded-full px-1.5 py-0.5 text-[10px] font-bold" style={{ background: "var(--status-warning, #f59e0b)", color: "#fff" }}>
-                    {data.unassignedCount}
+                    {unassignedCount}
                   </span>
                 );
               } else if (item.badge === "connections") {
                 badge = (
                   <span className="text-[10px] font-medium" style={{ color: "var(--text-tertiary)" }}>
-                    {data.connectedCount}/3
+                    {connectionCount}/3
                   </span>
                 );
               }
