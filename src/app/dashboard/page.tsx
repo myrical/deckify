@@ -8,6 +8,7 @@ import { MetaView } from "./components/meta-view";
 import { GoogleView } from "./components/google-view";
 import { ShopifyView } from "./components/shopify-view";
 import { ConnectAccounts } from "./components/connect-accounts";
+import { ClientsSection } from "./components/clients-section";
 
 export default function DashboardPage() {
   const [activeView, setActiveView] = useState<PlatformView>("aggregate");
@@ -70,31 +71,7 @@ export default function DashboardPage() {
 
         {/* Clients & Recent Decks (below the platform views) */}
         <div className="mt-10 grid gap-6 lg:grid-cols-2 animate-fade-in" style={{ animationDelay: "200ms" }}>
-          <section
-            className="rounded-xl p-6"
-            style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}
-          >
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>Clients</h2>
-              <button
-                className="rounded-lg px-3 py-1.5 text-xs font-medium transition-all hover:scale-105"
-                style={{
-                  background: "var(--accent-primary-light)",
-                  color: "var(--accent-primary)",
-                }}
-              >
-                + Add Client
-              </button>
-            </div>
-            <div
-              className="flex items-center justify-center rounded-lg py-8"
-              style={{ background: "var(--bg-secondary)" }}
-            >
-              <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
-                No clients yet. Add a client to get started.
-              </p>
-            </div>
-          </section>
+          <ClientsSection />
 
           <section
             className="rounded-xl p-6"
