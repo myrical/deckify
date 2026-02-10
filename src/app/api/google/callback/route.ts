@@ -115,7 +115,10 @@ export async function GET(request: Request) {
         platform: "google" as const,
       };
 
+      console.log("[Google Callback] Starting account discovery...");
+      console.log("[Google Callback] Scopes:", scopes);
       const adAccounts = await connector.listAccounts(tokenSet);
+      console.log(`[Google Callback] Found ${adAccounts.length} accounts:`, adAccounts.map(a => `${a.id} (${a.name})`));
       accountCount = adAccounts.length;
 
       for (const account of adAccounts) {
@@ -146,7 +149,8 @@ export async function GET(request: Request) {
       }
     } catch (listErr) {
       // If account discovery fails (e.g. no developer token), create a placeholder
-      console.error("[Google Callback] Account discovery failed, creating placeholder:", listErr);
+      const errMsg = listErr instanceof Error ? listErr.message : String(listErr);
+      console.error("[Google Callback] Account discovery failed, creating placeholder. Error:", errMsg, listErr);
       accountCount = 1;
       await db.adAccount.upsert({
         where: {

@@ -237,19 +237,24 @@ export function ConnectAccounts() {
     }
   };
 
+  const [syncError, setSyncError] = useState<string | null>(null);
+
   const handleSync = async (platformId: PlatformId) => {
     setSyncing(platformId);
     setSyncResult(null);
+    setSyncError(null);
     try {
       const res = await fetch(`/api/connections/${platformId}/sync`, {
         method: "POST",
       });
+      const data = await res.json();
       if (res.ok) {
-        const data = await res.json();
         setSyncResult({ platform: platformId, synced: data.synced, newAccounts: data.newAccounts });
+      } else {
+        setSyncError(data.error ?? `Sync failed (${res.status})`);
       }
-    } catch {
-      // silently fail
+    } catch (err) {
+      setSyncError(err instanceof Error ? err.message : "Sync request failed");
     } finally {
       setSyncing(null);
     }
@@ -425,6 +430,14 @@ export function ConnectAccounts() {
                       {syncResult.newAccounts > 0
                         ? `Found ${syncResult.newAccounts} new account${syncResult.newAccounts === 1 ? "" : "s"} (${syncResult.synced} total)`
                         : `All ${syncResult.synced} accounts up to date`}
+                    </p>
+                  )}
+                  {syncError && (
+                    <p
+                      className="mb-2 text-xs font-medium"
+                      style={{ color: "var(--status-negative)" }}
+                    >
+                      {syncError}
                     </p>
                   )}
                   <div className="flex gap-2">

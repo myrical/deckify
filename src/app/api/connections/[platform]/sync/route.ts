@@ -98,76 +98,84 @@ export async function POST(
   }
 
   if (platform === "google") {
-    const connector = new GoogleAdsConnector();
-    const tokenSet = {
-      accessToken: platformAuth.accessToken,
-      refreshToken: platformAuth.refreshToken ?? undefined,
-      expiresAt: platformAuth.tokenExpiresAt ?? undefined,
-      scopes: platformAuth.scopes,
-      platform: "google" as const,
-    };
+    try {
+      const connector = new GoogleAdsConnector();
+      const tokenSet = {
+        accessToken: platformAuth.accessToken,
+        refreshToken: platformAuth.refreshToken ?? undefined,
+        expiresAt: platformAuth.tokenExpiresAt ?? undefined,
+        scopes: platformAuth.scopes,
+        platform: "google" as const,
+      };
 
-    const adAccounts = await connector.listAccounts(tokenSet);
+      console.log("[Google Sync] Starting account discovery...");
+      const adAccounts = await connector.listAccounts(tokenSet);
+      console.log(`[Google Sync] Found ${adAccounts.length} accounts:`, adAccounts.map(a => `${a.id} (${a.name})`));
 
-    let newCount = 0;
-    for (const account of adAccounts) {
-      const existing = await db.adAccount.findUnique({
-        where: {
-          platform_platformId: {
+      let newCount = 0;
+      for (const account of adAccounts) {
+        const existing = await db.adAccount.findUnique({
+          where: {
+            platform_platformId: {
+              platform: "google",
+              platformId: account.id,
+            },
+          },
+        });
+
+        if (!existing) newCount++;
+
+        await db.adAccount.upsert({
+          where: {
+            platform_platformId: {
+              platform: "google",
+              platformId: account.id,
+            },
+          },
+          create: {
             platform: "google",
             platformId: account.id,
+            name: account.name,
+            currency: account.currency,
+            timezone: account.timezone,
+            status: account.status,
+            platformAuthId: platformAuth.id,
           },
-        },
-      });
+          update: {
+            name: account.name,
+            currency: account.currency,
+            timezone: account.timezone,
+            status: account.status,
+            platformAuthId: platformAuth.id,
+          },
+        });
+      }
 
-      if (!existing) newCount++;
-
-      await db.adAccount.upsert({
-        where: {
-          platform_platformId: {
+      // Remove the old placeholder account if real accounts were discovered
+      if (adAccounts.length > 0) {
+        const userId = session.user.id;
+        await db.adAccount.deleteMany({
+          where: {
             platform: "google",
-            platformId: account.id,
+            platformId: `google_${userId}`,
           },
-        },
-        create: {
-          platform: "google",
-          platformId: account.id,
-          name: account.name,
-          currency: account.currency,
-          timezone: account.timezone,
-          status: account.status,
-          platformAuthId: platformAuth.id,
-        },
-        update: {
-          name: account.name,
-          currency: account.currency,
-          timezone: account.timezone,
-          status: account.status,
-          platformAuthId: platformAuth.id,
-        },
+        });
+      }
+
+      await db.platformAuth.update({
+        where: { id: platformAuth.id },
+        data: { lastSyncAt: new Date() },
       });
-    }
 
-    // Remove the old placeholder account if real accounts were discovered
-    if (adAccounts.length > 0) {
-      const userId = session.user.id;
-      await db.adAccount.deleteMany({
-        where: {
-          platform: "google",
-          platformId: `google_${userId}`,
-        },
+      return NextResponse.json({
+        synced: adAccounts.length,
+        newAccounts: newCount,
       });
+    } catch (err) {
+      console.error("[Google Sync] Account discovery failed:", err);
+      const message = err instanceof Error ? err.message : String(err);
+      return NextResponse.json({ error: `Google sync failed: ${message}` }, { status: 500 });
     }
-
-    await db.platformAuth.update({
-      where: { id: platformAuth.id },
-      data: { lastSyncAt: new Date() },
-    });
-
-    return NextResponse.json({
-      synced: adAccounts.length,
-      newAccounts: newCount,
-    });
   }
 
   // TODO: Add Shopify sync when connector is available
