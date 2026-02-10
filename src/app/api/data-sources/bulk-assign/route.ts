@@ -47,6 +47,39 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "One or more data sources not found" }, { status: 404 });
   }
 
+  // One-channel-per-client enforcement
+  if (clientId) {
+    // Check what platforms the client already has
+    const existingAccounts = await db.adAccount.findMany({
+      where: { clientId, id: { notIn: dataSourceIds } },
+      select: { platform: true, name: true },
+    });
+
+    const existingPlatforms = new Map(existingAccounts.map((a) => [a.platform, a.name]));
+
+    // Check incoming accounts by platform
+    const incomingPlatforms = new Map<string, number>();
+    for (const acc of accounts) {
+      incomingPlatforms.set(acc.platform, (incomingPlatforms.get(acc.platform) ?? 0) + 1);
+    }
+
+    // Check for conflicts
+    for (const [platform, count] of incomingPlatforms) {
+      if (existingPlatforms.has(platform)) {
+        return NextResponse.json({
+          error: `This client already has a ${platform} account assigned (${existingPlatforms.get(platform)}). Unassign it first.`,
+          code: "CHANNEL_LIMIT",
+        }, { status: 409 });
+      }
+      if (count > 1) {
+        return NextResponse.json({
+          error: `Cannot assign multiple ${platform} accounts to the same client. Select only one ${platform} account.`,
+          code: "CHANNEL_LIMIT",
+        }, { status: 409 });
+      }
+    }
+  }
+
   await db.adAccount.updateMany({
     where: { id: { in: dataSourceIds } },
     data: { clientId: clientId ?? null },

@@ -119,6 +119,18 @@ export async function PATCH(request: Request) {
     if (!client || client.orgId !== membership.orgId) {
       return NextResponse.json({ error: "Client not found" }, { status: 404 });
     }
+
+    // One-channel-per-client enforcement
+    const existing = await db.adAccount.findFirst({
+      where: { clientId, platform: adAccount.platform, id: { not: dataSourceId } },
+    });
+    if (existing) {
+      return NextResponse.json({
+        error: `This client already has a ${adAccount.platform} account assigned (${existing.name}). Unassign it first.`,
+        code: "CHANNEL_LIMIT",
+        existingAccount: { id: existing.id, name: existing.name },
+      }, { status: 409 });
+    }
   }
 
   const updated = await db.adAccount.update({

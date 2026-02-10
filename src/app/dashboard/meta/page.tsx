@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { MetaView } from "../components/meta-view";
 import { AnalyticsErrorBanner } from "../components/analytics-error-banner";
+import { AnalyticsSkeleton } from "../components/loading-skeleton";
 
 interface ClientOption {
   id: string;
@@ -120,7 +121,9 @@ export default function MetaAdsPage() {
     return (
       <div className="p-6">
         <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Meta Ads</h1>
-        <p className="mt-2 text-sm" style={{ color: "var(--text-tertiary)" }}>Loading...</p>
+        <div className="mt-4">
+          <AnalyticsSkeleton variant="meta" />
+        </div>
       </div>
     );
   }

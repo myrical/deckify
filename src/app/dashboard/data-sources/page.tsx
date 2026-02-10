@@ -49,7 +49,10 @@ export default function DataSourcesPage() {
   const [platformFilter, setPlatformFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("unassigned");
   const [page, setPage] = useState(1);
-  const limit = 25;
+  const [limit, setLimit] = useState(25);
+
+  // Error toast for channel limit enforcement
+  const [assignError, setAssignError] = useState<string | null>(null);
 
   // Data
   const [dataSources, setDataSources] = useState<DataSource[]>([]);
@@ -100,7 +103,7 @@ export default function DataSourcesPage() {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, platformFilter, statusFilter, page]);
+  }, [debouncedSearch, platformFilter, statusFilter, page, limit]);
 
   useEffect(() => {
     fetchData();
@@ -109,7 +112,7 @@ export default function DataSourcesPage() {
   // Clear selection when filters change
   useEffect(() => {
     setSelected(new Set());
-  }, [debouncedSearch, platformFilter, statusFilter, page]);
+  }, [debouncedSearch, platformFilter, statusFilter, page, limit]);
 
   const totalPages = Math.max(1, Math.ceil(total / limit));
 
@@ -132,21 +135,31 @@ export default function DataSourcesPage() {
   };
 
   const assignSingle = async (dataSourceId: string, clientId: string | null) => {
-    await fetch("/api/data-sources", {
+    setAssignError(null);
+    const res = await fetch("/api/data-sources", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ dataSourceId, clientId }),
     });
+    if (res.status === 409) {
+      const json = await res.json();
+      setAssignError(json.error ?? "This client already has an account on this platform.");
+    }
     fetchData();
   };
 
   const assignBulk = async (clientId: string | null) => {
     if (selected.size === 0) return;
-    await fetch("/api/data-sources/bulk-assign", {
+    setAssignError(null);
+    const res = await fetch("/api/data-sources/bulk-assign", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ dataSourceIds: [...selected], clientId }),
     });
+    if (res.status === 409) {
+      const json = await res.json();
+      setAssignError(json.error ?? "Channel limit reached for this client.");
+    }
     setSelected(new Set());
     fetchData();
   };
@@ -313,16 +326,57 @@ export default function DataSourcesPage() {
         </div>
       )}
 
+      {/* Assign error toast */}
+      {assignError && (
+        <div
+          className="mb-4 flex items-center justify-between rounded-lg px-4 py-3"
+          style={{ background: "var(--status-negative-light, #fef2f2)", border: "1px solid var(--status-negative, #ef4444)" }}
+        >
+          <p className="text-sm font-medium" style={{ color: "var(--status-negative, #ef4444)" }}>
+            {assignError}
+          </p>
+          <button
+            onClick={() => setAssignError(null)}
+            className="text-sm font-medium"
+            style={{ color: "var(--status-negative, #ef4444)" }}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Results info */}
       <div className="mb-3 flex items-center justify-between">
         <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-          {loading ? "Loading..." : `${total} data source${total !== 1 ? "s" : ""}`}
+          {loading ? "Loading..." : total > 0
+            ? `Showing ${(page - 1) * limit + 1}\u2013${Math.min(page * limit, total)} of ${total} data source${total !== 1 ? "s" : ""}`
+            : `${total} data source${total !== 1 ? "s" : ""}`}
         </p>
-        {total > 0 && (
-          <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-            Page {page} of {totalPages}
-          </p>
-        )}
+        <div className="flex items-center gap-3">
+          {/* Page size selector */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>Show</span>
+            <select
+              value={limit}
+              onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
+              className="rounded-md px-1.5 py-1 text-xs outline-none"
+              style={{
+                background: "var(--bg-card)",
+                border: "1px solid var(--border-primary)",
+                color: "var(--text-primary)",
+              }}
+            >
+              {[25, 50, 100].map((n) => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </select>
+          </div>
+          {total > 0 && (
+            <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+              Page {page} of {totalPages}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Table */}
