@@ -249,21 +249,37 @@ export class MetaAdsConnector implements AdPlatformConnector {
   }
 
   async listAccounts(tokenSet: TokenSet): Promise<AdAccount[]> {
-    const result = await metaFetch<{
+    interface MetaAccountsResponse {
       data: MetaAdAccountInfo[];
-    }>(
-      `${META_GRAPH_URL}/me/adaccounts?fields=id,name,currency,timezone_name,account_status&limit=100`,
-      tokenSet.accessToken
-    );
+      paging?: { cursors?: { after?: string }; next?: string };
+    }
 
-    return result.data.map((acc) => ({
-      id: acc.id.replace("act_", ""),
-      name: acc.name,
-      platform: "meta" as const,
-      currency: acc.currency,
-      timezone: acc.timezone_name,
-      status: acc.account_status === 1 ? "active" : "disabled",
-    }));
+    const allAccounts: AdAccount[] = [];
+    let nextUrl: string | null =
+      `${META_GRAPH_URL}/me/adaccounts?fields=id,name,currency,timezone_name,account_status&limit=200`;
+
+    while (nextUrl) {
+      const result: MetaAccountsResponse = await metaFetch<MetaAccountsResponse>(
+        nextUrl,
+        tokenSet.accessToken
+      );
+
+      for (const acc of result.data) {
+        allAccounts.push({
+          id: acc.id.replace("act_", ""),
+          name: acc.name,
+          platform: "meta" as const,
+          currency: acc.currency,
+          timezone: acc.timezone_name,
+          status: acc.account_status === 1 ? "active" : "disabled",
+        });
+      }
+
+      // Follow cursor-based pagination
+      nextUrl = result.paging?.next ?? null;
+    }
+
+    return allAccounts;
   }
 
   async fetchCampaigns(params: FetchParams): Promise<NormalizedCampaign[]> {

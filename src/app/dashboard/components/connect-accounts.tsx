@@ -129,6 +129,8 @@ export function ConnectAccounts() {
   const [shopError, setShopError] = useState("");
   const [disconnecting, setDisconnecting] = useState<PlatformId | null>(null);
   const [connecting, setConnecting] = useState<PlatformId | null>(null);
+  const [syncing, setSyncing] = useState<PlatformId | null>(null);
+  const [syncResult, setSyncResult] = useState<{ platform: PlatformId; synced: number; newAccounts: number } | null>(null);
   const [connectError, setConnectError] = useState<{ platform: PlatformId; message: string } | null>(null);
 
   /* Fetch connection status on mount -------------------------------- */
@@ -226,11 +228,30 @@ export function ConnectAccounts() {
               : c
           )
         );
+        setSyncResult(null);
       }
     } catch {
       // silently fail -- user can retry
     } finally {
       setDisconnecting(null);
+    }
+  };
+
+  const handleSync = async (platformId: PlatformId) => {
+    setSyncing(platformId);
+    setSyncResult(null);
+    try {
+      const res = await fetch(`/api/connections/${platformId}/sync`, {
+        method: "POST",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSyncResult({ platform: platformId, synced: data.synced, newAccounts: data.newAccounts });
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setSyncing(null);
     }
   };
 
@@ -396,25 +417,50 @@ export function ConnectAccounts() {
                       {conn.accountName}
                     </p>
                   )}
-                  <button
-                    onClick={() => handleDisconnect(platform.id)}
-                    disabled={disconnecting === platform.id}
-                    className="rounded-lg px-3 py-1.5 text-xs font-medium transition-all hover:opacity-80"
-                    style={{
-                      background: "var(--bg-tertiary)",
-                      color: "var(--text-secondary)",
-                      border: "1px solid var(--border-secondary)",
-                      cursor:
-                        disconnecting === platform.id
-                          ? "not-allowed"
-                          : "pointer",
-                      opacity: disconnecting === platform.id ? 0.6 : 1,
-                    }}
-                  >
-                    {disconnecting === platform.id
-                      ? "Disconnecting..."
-                      : "Disconnect"}
-                  </button>
+                  {syncResult?.platform === platform.id && (
+                    <p
+                      className="mb-2 text-xs font-medium"
+                      style={{ color: "var(--status-positive)" }}
+                    >
+                      {syncResult.newAccounts > 0
+                        ? `Found ${syncResult.newAccounts} new account${syncResult.newAccounts === 1 ? "" : "s"} (${syncResult.synced} total)`
+                        : `All ${syncResult.synced} accounts up to date`}
+                    </p>
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleSync(platform.id)}
+                      disabled={syncing === platform.id}
+                      className="rounded-lg px-3 py-1.5 text-xs font-medium transition-all hover:opacity-80"
+                      style={{
+                        background: platform.brandColor,
+                        color: "#ffffff",
+                        cursor: syncing === platform.id ? "not-allowed" : "pointer",
+                        opacity: syncing === platform.id ? 0.7 : 1,
+                      }}
+                    >
+                      {syncing === platform.id ? "Syncing..." : "Sync Accounts"}
+                    </button>
+                    <button
+                      onClick={() => handleDisconnect(platform.id)}
+                      disabled={disconnecting === platform.id}
+                      className="rounded-lg px-3 py-1.5 text-xs font-medium transition-all hover:opacity-80"
+                      style={{
+                        background: "var(--bg-tertiary)",
+                        color: "var(--text-secondary)",
+                        border: "1px solid var(--border-secondary)",
+                        cursor:
+                          disconnecting === platform.id
+                            ? "not-allowed"
+                            : "pointer",
+                        opacity: disconnecting === platform.id ? 0.6 : 1,
+                      }}
+                    >
+                      {disconnecting === platform.id
+                        ? "Disconnecting..."
+                        : "Disconnect"}
+                    </button>
+                  </div>
                 </div>
               )}
 

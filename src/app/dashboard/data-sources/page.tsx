@@ -366,7 +366,7 @@ export default function DataSourcesPage() {
                 color: "var(--text-primary)",
               }}
             >
-              {[25, 50, 100].map((n) => (
+              {[25, 50, 100, 250, 500].map((n) => (
                 <option key={n} value={n}>{n}</option>
               ))}
             </select>
