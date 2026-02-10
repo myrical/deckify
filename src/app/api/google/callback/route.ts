@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { ensureOrg } from "@/lib/ensure-org";
+import { GoogleAdsConnector } from "@/core/ad-platforms/google-ads/connector";
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 
@@ -102,37 +103,86 @@ export async function GET(request: Request) {
       },
     });
 
-    // Create a placeholder account — actual accounts discovered via sync
-    // when the user has a Google Ads developer token configured
-    await db.adAccount.upsert({
-      where: {
-        platform_platformId: {
+    // Discover all accessible Google Ads accounts
+    let accountCount = 0;
+    try {
+      const connector = new GoogleAdsConnector();
+      const tokenSet = {
+        accessToken: tokenData.access_token,
+        refreshToken: tokenData.refresh_token,
+        expiresAt,
+        scopes,
+        platform: "google" as const,
+      };
+
+      const adAccounts = await connector.listAccounts(tokenSet);
+      accountCount = adAccounts.length;
+
+      for (const account of adAccounts) {
+        await db.adAccount.upsert({
+          where: {
+            platform_platformId: {
+              platform: "google",
+              platformId: account.id,
+            },
+          },
+          create: {
+            platform: "google",
+            platformId: account.id,
+            name: account.name,
+            currency: account.currency,
+            timezone: account.timezone,
+            status: account.status,
+            platformAuthId: platformAuth.id,
+          },
+          update: {
+            name: account.name,
+            currency: account.currency,
+            timezone: account.timezone,
+            status: account.status,
+            platformAuthId: platformAuth.id,
+          },
+        });
+      }
+    } catch (listErr) {
+      // If account discovery fails (e.g. no developer token), create a placeholder
+      console.error("[Google Callback] Account discovery failed, creating placeholder:", listErr);
+      accountCount = 1;
+      await db.adAccount.upsert({
+        where: {
+          platform_platformId: {
+            platform: "google",
+            platformId: `google_${session.user.id}`,
+          },
+        },
+        create: {
           platform: "google",
           platformId: `google_${session.user.id}`,
+          name: "Google Ads Account",
+          currency: "USD",
+          timezone: "America/New_York",
+          status: "active",
+          platformAuthId: platformAuth.id,
         },
-      },
-      create: {
-        platform: "google",
-        platformId: `google_${session.user.id}`,
-        name: "Google Ads Account",
-        currency: "USD",
-        timezone: "America/New_York",
-        status: "active",
-        platformAuthId: platformAuth.id,
-      },
-      update: {
-        status: "active",
-        platformAuthId: platformAuth.id,
-      },
-    });
+        update: {
+          status: "active",
+          platformAuthId: platformAuth.id,
+        },
+      });
+    }
 
     await db.platformAuth.update({
       where: { id: platformAuth.id },
       data: { lastSyncAt: new Date() },
     });
 
+    const params = new URLSearchParams({
+      success: "google_connected",
+      accounts: String(accountCount),
+    });
+
     return NextResponse.redirect(
-      `${process.env.NEXTAUTH_URL}/dashboard/data-sources?success=google_connected`
+      `${process.env.NEXTAUTH_URL}/dashboard/data-sources?${params}`
     );
   } catch (err) {
     console.error("Google OAuth callback error:", err);

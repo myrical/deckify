@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { MetaAdsConnector } from "@/core/ad-platforms/meta";
+import { GoogleAdsConnector } from "@/core/ad-platforms/google-ads/connector";
 
 /** POST /api/connections/[platform]/sync — re-discover accounts for a connected platform */
 export async function POST(
@@ -96,6 +97,79 @@ export async function POST(
     });
   }
 
-  // TODO: Add Google and Shopify sync when connectors are available
+  if (platform === "google") {
+    const connector = new GoogleAdsConnector();
+    const tokenSet = {
+      accessToken: platformAuth.accessToken,
+      refreshToken: platformAuth.refreshToken ?? undefined,
+      expiresAt: platformAuth.tokenExpiresAt ?? undefined,
+      scopes: platformAuth.scopes,
+      platform: "google" as const,
+    };
+
+    const adAccounts = await connector.listAccounts(tokenSet);
+
+    let newCount = 0;
+    for (const account of adAccounts) {
+      const existing = await db.adAccount.findUnique({
+        where: {
+          platform_platformId: {
+            platform: "google",
+            platformId: account.id,
+          },
+        },
+      });
+
+      if (!existing) newCount++;
+
+      await db.adAccount.upsert({
+        where: {
+          platform_platformId: {
+            platform: "google",
+            platformId: account.id,
+          },
+        },
+        create: {
+          platform: "google",
+          platformId: account.id,
+          name: account.name,
+          currency: account.currency,
+          timezone: account.timezone,
+          status: account.status,
+          platformAuthId: platformAuth.id,
+        },
+        update: {
+          name: account.name,
+          currency: account.currency,
+          timezone: account.timezone,
+          status: account.status,
+          platformAuthId: platformAuth.id,
+        },
+      });
+    }
+
+    // Remove the old placeholder account if real accounts were discovered
+    if (adAccounts.length > 0) {
+      const userId = session.user.id;
+      await db.adAccount.deleteMany({
+        where: {
+          platform: "google",
+          platformId: `google_${userId}`,
+        },
+      });
+    }
+
+    await db.platformAuth.update({
+      where: { id: platformAuth.id },
+      data: { lastSyncAt: new Date() },
+    });
+
+    return NextResponse.json({
+      synced: adAccounts.length,
+      newAccounts: newCount,
+    });
+  }
+
+  // TODO: Add Shopify sync when connector is available
   return NextResponse.json({ error: "Sync not supported for this platform yet" }, { status: 501 });
 }
