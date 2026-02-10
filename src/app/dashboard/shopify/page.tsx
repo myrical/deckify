@@ -33,7 +33,7 @@ export default function ShopifyPage() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch("/api/data-sources?platform=shopify&status=assigned&limit=100");
+        const res = await fetch("/api/data-sources?platform=shopify&status=assigned&limit=500");
         if (res.ok) {
           const json = await res.json();
           setClients(json.clients ?? []);
