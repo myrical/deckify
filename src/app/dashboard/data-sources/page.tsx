@@ -86,16 +86,26 @@ function AssignDropdown({
     if (!open || !buttonRef.current) return;
     const rect = buttonRef.current.getBoundingClientRect();
     const spaceBelow = window.innerHeight - rect.bottom;
+    const dropdownWidth = 208;
     const dropdownHeight = 260;
     const openUpward = spaceBelow < dropdownHeight;
 
+    // Align right edge of dropdown to right edge of button;
+    // if that would go off-screen left, clamp to left: 8
+    let left = rect.right - dropdownWidth;
+    if (left < 8) left = 8;
+    // If it would go off-screen right, clamp
+    if (left + dropdownWidth > window.innerWidth - 8) {
+      left = window.innerWidth - dropdownWidth - 8;
+    }
+
     setDropdownStyle({
       position: "fixed",
-      right: window.innerWidth - rect.right,
+      left,
       ...(openUpward
         ? { bottom: window.innerHeight - rect.top + 4 }
         : { top: rect.bottom + 4 }),
-      width: 208,
+      width: dropdownWidth,
       zIndex: 9999,
     });
   }, [open]);
