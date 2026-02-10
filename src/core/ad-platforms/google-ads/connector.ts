@@ -122,7 +122,7 @@ async function executeGaql(
   accessToken: string,
   developerToken: string
 ): Promise<GaqlRow[]> {
-  const url = `https://googleads.googleapis.com/v18/customers/${customerId}/googleAds:searchStream`;
+  const url = `https://googleads.googleapis.com/v20/customers/${customerId}/googleAds:searchStream`;
 
   const result = await googleAdsFetch<Array<{ results: GaqlRow[] }>>(url, {
     method: "POST",
@@ -262,7 +262,7 @@ export class GoogleAdsConnector implements AdPlatformConnector {
     const { developerToken } = getGoogleAdsConfig();
 
     // First get the MCC/manager account customer IDs accessible
-    const url = "https://googleads.googleapis.com/v18/customers:listAccessibleCustomers";
+    const url = "https://googleads.googleapis.com/v20/customers:listAccessibleCustomers";
     const result = await googleAdsFetch<{ resourceNames: string[] }>(url, {
       method: "GET",
       headers: {
