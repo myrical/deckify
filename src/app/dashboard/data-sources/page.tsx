@@ -58,7 +58,9 @@ function AssignDropdown({
   const [newName, setNewName] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [dropdownStyle, setDropdownStyle] = useState<React.CSSProperties>({});
 
   // Close on outside click
   useEffect(() => {
@@ -78,6 +80,25 @@ function AssignDropdown({
   useEffect(() => {
     if (creating && inputRef.current) inputRef.current.focus();
   }, [creating]);
+
+  // Compute fixed position for dropdown to escape overflow clipping
+  useEffect(() => {
+    if (!open || !buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const dropdownHeight = 260;
+    const openUpward = spaceBelow < dropdownHeight;
+
+    setDropdownStyle({
+      position: "fixed",
+      right: window.innerWidth - rect.right,
+      ...(openUpward
+        ? { bottom: window.innerHeight - rect.top + 4 }
+        : { top: rect.bottom + 4 }),
+      width: 208,
+      zIndex: 9999,
+    });
+  }, [open]);
 
   const handleSelect = (clientId: string | null) => {
     onAssign(clientId);
@@ -120,6 +141,7 @@ function AssignDropdown({
     <div ref={ref} className="relative" style={{ zIndex: open ? 50 : "auto" }}>
       {/* Trigger */}
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center justify-between gap-1 rounded-lg text-left transition-all"
@@ -147,12 +169,12 @@ function AssignDropdown({
       {/* Dropdown panel */}
       {open && (
         <div
-          className="absolute right-0 top-full mt-1 w-52 overflow-hidden rounded-lg"
+          className="overflow-hidden rounded-lg"
           style={{
+            ...dropdownStyle,
             background: "var(--bg-card)",
             border: "1px solid var(--border-primary)",
             boxShadow: "var(--shadow-lg)",
-            zIndex: 50,
           }}
         >
           {/* Unassigned option */}
@@ -616,7 +638,7 @@ export default function DataSourcesPage() {
 
       {/* Table */}
       <div
-        className="overflow-hidden rounded-xl border"
+        className="rounded-xl border"
         style={{ borderColor: "var(--border-primary)" }}
       >
         {/* Table header */}
