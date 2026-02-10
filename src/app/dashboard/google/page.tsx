@@ -65,6 +65,7 @@ export default function GoogleAdsPage() {
           setAnalyticsData({
             accountName: s.account?.name ?? "Google Ads",
             spend: s.metrics?.spend ?? 0,
+            revenue: s.metrics?.revenue ?? 0,
             impressions: s.metrics?.impressions ?? 0,
             clicks: s.metrics?.clicks ?? 0,
             conversions: s.metrics?.conversions ?? 0,
@@ -78,6 +79,7 @@ export default function GoogleAdsPage() {
               status: c.status,
               type: (c as Record<string, unknown>).objective ?? "Search",
               spend: (c.metrics as Record<string, unknown>)?.spend ?? 0,
+              revenue: (c.metrics as Record<string, unknown>)?.revenue ?? 0,
               impressions: (c.metrics as Record<string, unknown>)?.impressions ?? 0,
               clicks: (c.metrics as Record<string, unknown>)?.clicks ?? 0,
               conversions: (c.metrics as Record<string, unknown>)?.conversions ?? 0,
@@ -86,6 +88,10 @@ export default function GoogleAdsPage() {
               adGroups: [],
             })),
             keywords: [],
+            timeSeries: (s.timeSeries ?? []).map((ts: Record<string, unknown>) => ({
+              date: ts.date,
+              metrics: ts.metrics,
+            })),
             previousPeriod: s.previousPeriodMetrics
               ? {
                   spend: s.previousPeriodMetrics.spend,

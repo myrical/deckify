@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getOverviewByClient, type ClientOverview } from "@/lib/analytics";
+import { MetricCard } from "./components/metric-card";
 
 function fmt(n: number): string {
   return `$${n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -131,11 +132,37 @@ export default async function DashboardOverview() {
       </div>
 
       {hasClients ? (
-        <div className="grid gap-4 lg:grid-cols-2">
-          {clientOverviews.map((co) => (
-            <ClientCard key={co.client.id} data={co} />
-          ))}
-        </div>
+        <>
+          {/* Aggregate MER-style metrics */}
+          {(() => {
+            const totalSpend = clientOverviews.reduce((sum, co) => sum + co.totalSpend, 0);
+            const totalRevenue = clientOverviews.reduce((sum, co) => sum + co.totalRevenue, 0);
+            const blendedRoas = totalSpend > 0 ? totalRevenue / totalSpend : 0;
+            return (totalSpend > 0 || totalRevenue > 0) ? (
+              <div
+                className="mb-6 overflow-hidden rounded-xl"
+                style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}
+              >
+                <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--border-primary)" }}>
+                  <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+                    Blended Performance
+                  </h3>
+                </div>
+                <div className="stagger-children grid grid-cols-2 gap-4 p-6 lg:grid-cols-4">
+                  <MetricCard label="Total Ad Spend" value={fmt(totalSpend)} size="lg" />
+                  <MetricCard label="Total Revenue" value={fmt(totalRevenue)} size="lg" metricType="positive-up" />
+                  <MetricCard label="Blended ROAS" value={blendedRoas.toFixed(2) + "x"} size="lg" metricType="positive-up" />
+                  <MetricCard label="MER" value={blendedRoas.toFixed(2)} size="lg" />
+                </div>
+              </div>
+            ) : null;
+          })()}
+          <div className="grid gap-4 lg:grid-cols-2">
+            {clientOverviews.map((co) => (
+              <ClientCard key={co.client.id} data={co} />
+            ))}
+          </div>
+        </>
       ) : (
         /* Empty state */
         <div

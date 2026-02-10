@@ -6,9 +6,38 @@ interface MetricCardProps {
   change?: number;
   trend?: "up" | "down" | "flat";
   size?: "sm" | "md" | "lg";
+  /** Sentiment-aware coloring: positive-up = increase is good, negative-up = increase is bad, neutral = always gray */
+  metricType?: "positive-up" | "negative-up" | "neutral";
 }
 
-export function MetricCard({ label, value, change, trend, size = "md" }: MetricCardProps) {
+function resolveTrend(
+  change: number | undefined,
+  trend: "up" | "down" | "flat" | undefined,
+  metricType: "positive-up" | "negative-up" | "neutral" | undefined,
+): { direction: "up" | "down" | "flat"; sentiment: "positive" | "negative" | "neutral" } | undefined {
+  if (change === undefined) return undefined;
+
+  const direction = change > 0.5 ? "up" as const : change < -0.5 ? "down" as const : "flat" as const;
+
+  if (!metricType) {
+    // Legacy behavior: use trend prop directly for color
+    const t = trend ?? direction;
+    return { direction: t, sentiment: t === "up" ? "positive" : t === "down" ? "negative" : "neutral" };
+  }
+
+  if (metricType === "neutral" || direction === "flat") {
+    return { direction, sentiment: "neutral" };
+  }
+
+  if (metricType === "positive-up") {
+    return { direction, sentiment: direction === "up" ? "positive" : "negative" };
+  }
+
+  // negative-up: increase is bad
+  return { direction, sentiment: direction === "up" ? "negative" : "positive" };
+}
+
+export function MetricCard({ label, value, change, trend, size = "md", metricType }: MetricCardProps) {
   return (
     <div
       className="group relative overflow-hidden rounded-xl p-4 transition-all duration-200 hover:-translate-y-0.5"
@@ -31,49 +60,34 @@ export function MetricCard({ label, value, change, trend, size = "md" }: MetricC
         {label}
       </p>
       <p
-        className={`mt-1.5 font-bold ${
+        className={`mt-1.5 font-bold font-mono ${
           size === "lg" ? "text-3xl" : size === "md" ? "text-2xl" : "text-xl"
         }`}
         style={{ color: "var(--text-primary)" }}
       >
         {value}
       </p>
-      {change !== undefined && (
-        <div className="mt-2 flex items-center gap-1.5">
-          <span
-            className="flex h-5 w-5 items-center justify-center rounded-full text-xs"
-            style={{
-              background:
-                trend === "up"
-                  ? "var(--status-positive-light)"
-                  : trend === "down"
-                    ? "var(--status-negative-light)"
-                    : "var(--bg-tertiary)",
-              color:
-                trend === "up"
-                  ? "var(--status-positive)"
-                  : trend === "down"
-                    ? "var(--status-negative)"
-                    : "var(--text-tertiary)",
-            }}
-          >
-            {trend === "up" ? "\u25B2" : trend === "down" ? "\u25BC" : "\u25CF"}
-          </span>
-          <span
-            className="text-xs font-medium"
-            style={{
-              color:
-                trend === "up"
-                  ? "var(--status-positive)"
-                  : trend === "down"
-                    ? "var(--status-negative)"
-                    : "var(--text-tertiary)",
-            }}
-          >
-            {Math.abs(change).toFixed(1)}% vs prev.
-          </span>
-        </div>
-      )}
+      {(() => {
+        const resolved = resolveTrend(change, trend, metricType);
+        if (!resolved || change === undefined) return null;
+        const { direction, sentiment } = resolved;
+        const bgColor = sentiment === "positive" ? "var(--status-positive-light)" : sentiment === "negative" ? "var(--status-negative-light)" : "var(--bg-tertiary)";
+        const fgColor = sentiment === "positive" ? "var(--status-positive)" : sentiment === "negative" ? "var(--status-negative)" : "var(--text-tertiary)";
+        const arrow = direction === "up" ? "\u25B2" : direction === "down" ? "\u25BC" : "\u25CF";
+        return (
+          <div className="mt-2 flex items-center gap-1.5">
+            <span
+              className="flex h-5 w-5 items-center justify-center rounded-full text-xs"
+              style={{ background: bgColor, color: fgColor }}
+            >
+              {arrow}
+            </span>
+            <span className="text-xs font-medium" style={{ color: fgColor }}>
+              {Math.abs(change).toFixed(1)}% vs prev.
+            </span>
+          </div>
+        );
+      })()}
     </div>
   );
 }

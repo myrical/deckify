@@ -78,6 +78,10 @@ export default function ShopifyPage() {
               revenue: (p.revenue as number) ?? 0,
               unitsSold: (p.unitsSold as number) ?? 0,
             })),
+            timeSeries: (s.timeSeries ?? []).map((ts: Record<string, unknown>) => ({
+              date: ts.date,
+              metrics: ts.metrics,
+            })),
             previousPeriod: s.previousPeriodMetrics
               ? {
                   revenue: s.previousPeriodMetrics.revenue,

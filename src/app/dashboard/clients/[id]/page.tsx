@@ -248,9 +248,12 @@ function transformMetaData(s: Record<string, unknown>) {
   const prevMetrics = s.previousPeriodMetrics as Record<string, number> | undefined;
   const account = s.account as Record<string, string> | undefined;
 
+  const timeSeries = (s.timeSeries ?? []) as Array<Record<string, unknown>>;
+
   return {
     accountName: account?.name ?? "Meta Ads",
     spend: metrics?.spend ?? 0,
+    revenue: metrics?.revenue ?? 0,
     impressions: metrics?.impressions ?? 0,
     clicks: metrics?.clicks ?? 0,
     conversions: metrics?.conversions ?? 0,
@@ -265,6 +268,7 @@ function transformMetaData(s: Record<string, unknown>) {
         name: c.name as string,
         status: c.status as string,
         spend: cm?.spend ?? 0,
+        revenue: cm?.revenue ?? 0,
         impressions: cm?.impressions ?? 0,
         clicks: cm?.clicks ?? 0,
         conversions: cm?.conversions ?? 0,
@@ -274,6 +278,7 @@ function transformMetaData(s: Record<string, unknown>) {
       };
     }),
     creatives: [],
+    timeSeries: timeSeries.map((ts) => ({ date: ts.date as string, metrics: ts.metrics as Record<string, number> })),
     previousPeriod: prevMetrics
       ? { spend: prevMetrics.spend, conversions: prevMetrics.conversions, roas: prevMetrics.roas, cpa: prevMetrics.cpa }
       : undefined,
@@ -285,10 +290,12 @@ function transformGoogleData(s: Record<string, unknown>) {
   const campaigns = (s.campaigns ?? []) as Array<Record<string, unknown>>;
   const prevMetrics = s.previousPeriodMetrics as Record<string, number> | undefined;
   const account = s.account as Record<string, string> | undefined;
+  const timeSeries = (s.timeSeries ?? []) as Array<Record<string, unknown>>;
 
   return {
     accountName: account?.name ?? "Google Ads",
     spend: metrics?.spend ?? 0,
+    revenue: metrics?.revenue ?? 0,
     impressions: metrics?.impressions ?? 0,
     clicks: metrics?.clicks ?? 0,
     conversions: metrics?.conversions ?? 0,
@@ -304,6 +311,7 @@ function transformGoogleData(s: Record<string, unknown>) {
         status: c.status as string,
         type: (c.objective as string) ?? "Search",
         spend: cm?.spend ?? 0,
+        revenue: cm?.revenue ?? 0,
         impressions: cm?.impressions ?? 0,
         clicks: cm?.clicks ?? 0,
         conversions: cm?.conversions ?? 0,
@@ -313,6 +321,7 @@ function transformGoogleData(s: Record<string, unknown>) {
       };
     }),
     keywords: [],
+    timeSeries: timeSeries.map((ts) => ({ date: ts.date as string, metrics: ts.metrics as Record<string, number> })),
     previousPeriod: prevMetrics
       ? { spend: prevMetrics.spend, conversions: prevMetrics.conversions, roas: prevMetrics.roas, cpa: prevMetrics.cpa }
       : undefined,
@@ -323,6 +332,7 @@ function transformShopifyData(s: Record<string, unknown>) {
   const metrics = s.metrics as Record<string, number> | undefined;
   const prevMetrics = s.previousPeriodMetrics as Record<string, number> | undefined;
   const account = s.account as Record<string, string> | undefined;
+  const timeSeries = (s.timeSeries ?? []) as Array<Record<string, unknown>>;
 
   return {
     storeName: account?.name ?? "Shopify Store",
@@ -340,6 +350,7 @@ function transformShopifyData(s: Record<string, unknown>) {
       revenue: (p.revenue as number) ?? 0,
       unitsSold: (p.unitsSold as number) ?? 0,
     })),
+    timeSeries: timeSeries.map((ts) => ({ date: ts.date as string, metrics: ts.metrics as { revenue: number; orders: number; averageOrderValue: number } })),
     previousPeriod: prevMetrics
       ? { revenue: prevMetrics.revenue, orders: prevMetrics.orders, averageOrderValue: prevMetrics.averageOrderValue, newCustomers: prevMetrics.newCustomers ?? 0 }
       : undefined,
