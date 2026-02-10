@@ -64,12 +64,26 @@ export default function ClientDetailPage() {
   // Unassign confirmation
   const [unassigningId, setUnassigningId] = useState<string | null>(null);
 
-  // Fetch client info
+  // Cross-platform overview for this client
+  const [overview, setOverview] = useState<{
+    totalSpend: number;
+    totalRevenue: number;
+    platforms: {
+      meta?: { spend: number };
+      google?: { spend: number };
+      shopify?: { orders: number };
+    };
+  } | null>(null);
+
+  // Fetch client info + cross-platform overview
   const fetchClient = useCallback(async () => {
     try {
-      const res = await fetch("/api/clients");
-      if (res.ok) {
-        const json = await res.json();
+      const [clientRes, overviewRes] = await Promise.all([
+        fetch("/api/clients"),
+        fetch("/api/analytics?platform=overview"),
+      ]);
+      if (clientRes.ok) {
+        const json = await clientRes.json();
         const allC = (json.clients ?? []) as ClientDetail[];
         setAllClients(allC.map((c) => ({ id: c.id, name: c.name })));
         const found = allC.find((c) => c.id === clientId);
@@ -79,6 +93,19 @@ export default function ClientDetailPage() {
           if (platforms.length > 0 && !activePlatform) {
             setActivePlatform(platforms[0]);
           }
+        }
+      }
+      if (overviewRes.ok) {
+        const overviewJson = await overviewRes.json();
+        const clientOverview = (overviewJson.data ?? []).find(
+          (co: { client: { id: string } }) => co.client.id === clientId
+        );
+        if (clientOverview) {
+          setOverview({
+            totalSpend: clientOverview.totalSpend ?? 0,
+            totalRevenue: clientOverview.totalRevenue ?? 0,
+            platforms: clientOverview.platforms ?? {},
+          });
         }
       }
     } catch {
@@ -203,11 +230,14 @@ export default function ClientDetailPage() {
       {/* Header */}
       <div className="mb-6">
         <Link
-          href="/dashboard/clients"
-          className="mb-2 inline-block text-xs font-medium"
+          href="/dashboard"
+          className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium transition-colors"
           style={{ color: "var(--text-tertiary)" }}
         >
-          Clients
+          <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+            <path fillRule="evenodd" d="M17 10a.75.75 0 0 1-.75.75H5.612l4.158 3.96a.75.75 0 1 1-1.04 1.08l-5.5-5.25a.75.75 0 0 1 0-1.08l5.5-5.25a.75.75 0 0 1 1.04 1.08L5.612 9.25H16.25A.75.75 0 0 1 17 10Z" clipRule="evenodd" />
+          </svg>
+          Back to Overview
         </Link>
         <div className="flex items-center gap-3">
           {editingName ? (
@@ -258,6 +288,59 @@ export default function ClientDetailPage() {
           {client.adAccounts.length} data source{client.adAccounts.length !== 1 ? "s" : ""} assigned
         </p>
       </div>
+
+      {/* Cross-platform summary */}
+      {overview && (overview.totalSpend > 0 || overview.totalRevenue > 0) && (
+        <div
+          className="mb-6 flex flex-wrap items-center gap-6 rounded-xl px-5 py-4"
+          style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}
+        >
+          {overview.totalSpend > 0 && (
+            <div>
+              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Total Spend</p>
+              <p className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
+                ${overview.totalSpend.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              </p>
+            </div>
+          )}
+          {overview.totalRevenue > 0 && (
+            <div>
+              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Revenue</p>
+              <p className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
+                ${overview.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              </p>
+            </div>
+          )}
+          {overview.totalSpend > 0 && overview.totalRevenue > 0 && (
+            <div>
+              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>ROAS</p>
+              <p className="text-lg font-bold" style={{ color: "var(--status-positive)" }}>
+                {(overview.totalRevenue / overview.totalSpend).toFixed(2)}x
+              </p>
+            </div>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {overview.platforms.meta && (
+              <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium" style={{ background: "#1877F218", color: "#1877F2" }}>
+                <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#1877F2" }} />
+                Meta: ${overview.platforms.meta.spend.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </span>
+            )}
+            {overview.platforms.google && (
+              <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium" style={{ background: "#4285F418", color: "#4285F4" }}>
+                <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#4285F4" }} />
+                Google: ${overview.platforms.google.spend.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </span>
+            )}
+            {overview.platforms.shopify && (
+              <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium" style={{ background: "#96BF4818", color: "#96BF48" }}>
+                <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#96BF48" }} />
+                Shopify: {overview.platforms.shopify.orders} orders
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Delete confirmation modal */}
       {showDeleteConfirm && (

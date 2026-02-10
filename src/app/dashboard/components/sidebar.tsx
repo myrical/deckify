@@ -21,12 +21,9 @@ interface NavItem {
 const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
   { section: "Analytics", items: [
     { href: "/dashboard", label: "Overview", icon: "chart" },
-    { href: "/dashboard/meta", label: "Meta Ads", icon: "meta", platform: "meta" },
-    { href: "/dashboard/google", label: "Google Ads", icon: "google", platform: "google" },
-    { href: "/dashboard/shopify", label: "Shopify", icon: "shopify", platform: "shopify" },
+    { href: "/dashboard/clients", label: "Clients", icon: "users" },
   ]},
   { section: "Manage", items: [
-    { href: "/dashboard/clients", label: "Clients", icon: "users" },
     { href: "/dashboard/data-sources", label: "Data Sources", icon: "database", badge: "unassigned" },
     { href: "/dashboard/connections", label: "Connections", icon: "plug", badge: "connections" },
   ]},

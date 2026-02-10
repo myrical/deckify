@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getOverviewByClient, type ClientOverview } from "@/lib/analytics";
-import { MetricCard } from "./components/metric-card";
 
 function fmt(n: number): string {
   return `$${n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
@@ -14,8 +13,9 @@ function ClientCard({ data }: { data: ClientOverview }) {
   const hasData = totalSpend > 0 || totalRevenue > 0;
 
   return (
-    <div
-      className="rounded-xl p-5 transition-all hover:-translate-y-0.5"
+    <Link
+      href={`/dashboard/clients/${client.id}`}
+      className="group block rounded-xl p-5 transition-all hover:-translate-y-0.5"
       style={{
         background: "var(--bg-card)",
         border: "1px solid var(--border-primary)",
@@ -26,13 +26,16 @@ function ClientCard({ data }: { data: ClientOverview }) {
         <h3 className="text-base font-semibold" style={{ color: "var(--text-primary)" }}>
           {client.name}
         </h3>
-        <Link
-          href={`/dashboard/clients/${client.id}`}
-          className="text-xs font-medium"
-          style={{ color: "var(--accent-primary)" }}
+        <svg
+          viewBox="0 0 20 20"
+          fill="currentColor"
+          width="16"
+          height="16"
+          className="transition-transform group-hover:translate-x-0.5"
+          style={{ color: "var(--text-tertiary)" }}
         >
-          View Details
-        </Link>
+          <path fillRule="evenodd" d="M3 10a.75.75 0 0 1 .75-.75h10.638L10.23 5.29a.75.75 0 1 1 1.04-1.08l5.5 5.25a.75.75 0 0 1 0 1.08l-5.5 5.25a.75.75 0 1 1-1.04-1.08l4.158-3.96H3.75A.75.75 0 0 1 3 10Z" clipRule="evenodd" />
+        </svg>
       </div>
 
       {hasData ? (
@@ -97,7 +100,7 @@ function ClientCard({ data }: { data: ClientOverview }) {
           No analytics data yet for this period.
         </p>
       )}
-    </div>
+    </Link>
   );
 }
 
@@ -126,43 +129,17 @@ export default async function DashboardOverview() {
         <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Overview</h1>
         <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
           {hasClients
-            ? `${clientOverviews.length} client${clientOverviews.length !== 1 ? "s" : ""} — last 7 days`
+            ? `${clientOverviews.length} client${clientOverviews.length !== 1 ? "s" : ""} — last 7 days. Select a client to view analytics.`
             : "Your client performance at a glance."}
         </p>
       </div>
 
       {hasClients ? (
-        <>
-          {/* Aggregate MER-style metrics */}
-          {(() => {
-            const totalSpend = clientOverviews.reduce((sum, co) => sum + co.totalSpend, 0);
-            const totalRevenue = clientOverviews.reduce((sum, co) => sum + co.totalRevenue, 0);
-            const blendedRoas = totalSpend > 0 ? totalRevenue / totalSpend : 0;
-            return (totalSpend > 0 || totalRevenue > 0) ? (
-              <div
-                className="mb-6 overflow-hidden rounded-xl"
-                style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}
-              >
-                <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--border-primary)" }}>
-                  <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
-                    Blended Performance
-                  </h3>
-                </div>
-                <div className="stagger-children grid grid-cols-2 gap-4 p-6 lg:grid-cols-4">
-                  <MetricCard label="Total Ad Spend" value={fmt(totalSpend)} size="lg" />
-                  <MetricCard label="Total Revenue" value={fmt(totalRevenue)} size="lg" metricType="positive-up" />
-                  <MetricCard label="Blended ROAS" value={blendedRoas.toFixed(2) + "x"} size="lg" metricType="positive-up" />
-                  <MetricCard label="MER" value={blendedRoas.toFixed(2)} size="lg" />
-                </div>
-              </div>
-            ) : null;
-          })()}
-          <div className="grid gap-4 lg:grid-cols-2">
-            {clientOverviews.map((co) => (
-              <ClientCard key={co.client.id} data={co} />
-            ))}
-          </div>
-        </>
+        <div className="grid gap-4 lg:grid-cols-2">
+          {clientOverviews.map((co) => (
+            <ClientCard key={co.client.id} data={co} />
+          ))}
+        </div>
       ) : (
         /* Empty state */
         <div
