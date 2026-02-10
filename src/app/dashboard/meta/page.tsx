@@ -12,7 +12,7 @@ export default function MetaAdsPage() {
     if (clientId) {
       router.replace(`/dashboard/clients/${clientId}`);
     } else {
-      router.replace("/dashboard");
+      router.replace("/dashboard/clients");
     }
   }, [clientId, router]);
 

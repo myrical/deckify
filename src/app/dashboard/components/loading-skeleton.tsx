@@ -18,26 +18,42 @@ export function AnalyticsSkeleton({ variant = "meta" }: { variant?: "meta" | "go
   if (variant === "overview") {
     return (
       <div className="space-y-6">
-        <div className="rounded-xl p-6" style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}>
-          <ShimmerBlock className="mb-4 h-4 w-40" />
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, i) => <MetricCardSkeleton key={i} size="lg" />)}
+        {/* KPI cards */}
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => <MetricCardSkeleton key={i} size="md" />)}
+        </div>
+
+        {/* Platform breakdown */}
+        <div className="overflow-hidden rounded-xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}>
+          <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--border-primary)" }}>
+            <ShimmerBlock className="h-4 w-40" />
+          </div>
+          <div className="space-y-0 divide-y" style={{ borderColor: "var(--border-primary)" }}>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4 px-6 py-4">
+                <ShimmerBlock className="h-8 w-8 rounded-lg" />
+                <div className="flex-1 space-y-2">
+                  <ShimmerBlock className="h-4 w-24" />
+                  <div className="flex gap-4">
+                    <ShimmerBlock className="h-3 w-20" />
+                    <ShimmerBlock className="h-3 w-20" />
+                    <ShimmerBlock className="h-3 w-16" />
+                  </div>
+                </div>
+                <ShimmerBlock className="hidden h-2 w-32 rounded-full sm:block" />
+              </div>
+            ))}
           </div>
         </div>
-        <div className="grid gap-4 lg:grid-cols-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-xl p-5" style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}>
-              <div className="mb-3 flex items-center justify-between">
-                <ShimmerBlock className="h-5 w-32" />
-                <ShimmerBlock className="h-4 w-20" />
-              </div>
-              <div className="flex gap-4">
-                <ShimmerBlock className="h-10 w-20" />
-                <ShimmerBlock className="h-10 w-20" />
-                <ShimmerBlock className="h-10 w-16" />
-              </div>
-            </div>
-          ))}
+
+        {/* Chart placeholder */}
+        <div className="overflow-hidden rounded-xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}>
+          <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--border-primary)" }}>
+            <ShimmerBlock className="h-4 w-40" />
+          </div>
+          <div className="p-6">
+            <ShimmerBlock className="h-64 w-full rounded-lg" />
+          </div>
         </div>
       </div>
     );

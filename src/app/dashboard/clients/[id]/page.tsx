@@ -6,6 +6,7 @@ import Link from "next/link";
 import { MetaView } from "../../components/meta-view";
 import { GoogleView } from "../../components/google-view";
 import { ShopifyView } from "../../components/shopify-view";
+import { AllPlatformsView, type AllPlatformsViewData } from "../../components/all-platforms-view";
 import { AnalyticsErrorBanner } from "../../components/analytics-error-banner";
 import { AnalyticsSkeleton } from "../../components/loading-skeleton";
 
@@ -29,12 +30,19 @@ interface ClientOption {
   name: string;
 }
 
-type ActivePlatform = "meta" | "google" | "shopify";
+type PlatformKey = "meta" | "google" | "shopify";
+type ActiveTab = "all" | PlatformKey;
 
 const PLATFORM_COLORS: Record<string, string> = {
   meta: "#1877F2",
   google: "#4285F4",
   shopify: "#96BF48",
+};
+
+const PLATFORM_LABELS: Record<string, string> = {
+  meta: "Meta Ads",
+  google: "Google Ads",
+  shopify: "Shopify",
 };
 
 export default function ClientDetailPage() {
@@ -44,11 +52,15 @@ export default function ClientDetailPage() {
 
   const [client, setClient] = useState<ClientDetail | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activePlatform, setActivePlatform] = useState<ActivePlatform | null>(null);
+  const [activeTab, setActiveTab] = useState<ActiveTab>("all");
   const [analyticsData, setAnalyticsData] = useState<Record<string, unknown> | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [errors, setErrors] = useState<Array<{ accountId: string; accountName: string; error: string; code: string; recoveryAction: string }>>([]);
   const [accountsFound, setAccountsFound] = useState<number | null>(null);
+
+  // All Platforms tab data
+  const [allPlatformsData, setAllPlatformsData] = useState<AllPlatformsViewData | null>(null);
+  const [allPlatformsLoading, setAllPlatformsLoading] = useState(false);
 
   // Edit name state
   const [editingName, setEditingName] = useState(false);
@@ -64,24 +76,10 @@ export default function ClientDetailPage() {
   // Unassign confirmation
   const [unassigningId, setUnassigningId] = useState<string | null>(null);
 
-  // Cross-platform overview for this client
-  const [overview, setOverview] = useState<{
-    totalSpend: number;
-    totalRevenue: number;
-    platforms: {
-      meta?: { spend: number };
-      google?: { spend: number };
-      shopify?: { orders: number };
-    };
-  } | null>(null);
-
-  // Fetch client info + cross-platform overview
+  // Fetch client info
   const fetchClient = useCallback(async () => {
     try {
-      const [clientRes, overviewRes] = await Promise.all([
-        fetch("/api/clients"),
-        fetch("/api/analytics?platform=overview"),
-      ]);
+      const clientRes = await fetch("/api/clients");
       if (clientRes.ok) {
         const json = await clientRes.json();
         const allC = (json.clients ?? []) as ClientDetail[];
@@ -89,23 +87,6 @@ export default function ClientDetailPage() {
         const found = allC.find((c) => c.id === clientId);
         if (found) {
           setClient(found);
-          const platforms = [...new Set(found.adAccounts.map((a: AdAccountInfo) => a.platform))] as ActivePlatform[];
-          if (platforms.length > 0 && !activePlatform) {
-            setActivePlatform(platforms[0]);
-          }
-        }
-      }
-      if (overviewRes.ok) {
-        const overviewJson = await overviewRes.json();
-        const clientOverview = (overviewJson.data ?? []).find(
-          (co: { client: { id: string } }) => co.client.id === clientId
-        );
-        if (clientOverview) {
-          setOverview({
-            totalSpend: clientOverview.totalSpend ?? 0,
-            totalRevenue: clientOverview.totalRevenue ?? 0,
-            platforms: clientOverview.platforms ?? {},
-          });
         }
       }
     } catch {
@@ -113,21 +94,168 @@ export default function ClientDetailPage() {
     } finally {
       setLoading(false);
     }
-  }, [clientId, activePlatform]);
+  }, [clientId]);
 
   useEffect(() => {
     fetchClient();
   }, [fetchClient]);
 
-  // Fetch analytics for selected platform
+  // Derive connected platforms from client
+  const platforms = client
+    ? ([...new Set(client.adAccounts.map((a) => a.platform))] as PlatformKey[])
+    : [];
+
+  // Fetch "All Platforms" aggregated data
+  const fetchAllPlatforms = useCallback(async () => {
+    if (!clientId || platforms.length === 0) return;
+    setAllPlatformsLoading(true);
+    setAllPlatformsData(null);
+
+    try {
+      // Fetch all connected platforms in parallel
+      const fetches = platforms.map((p) =>
+        fetch(`/api/analytics?platform=${p}&clientId=${clientId}`)
+          .then((res) => (res.ok ? res.json() : null))
+          .catch(() => null)
+      );
+      const results = await Promise.all(fetches);
+
+      // Build a map: platform -> first summary
+      const platformData: Record<string, Record<string, unknown>> = {};
+      platforms.forEach((p, i) => {
+        const json = results[i];
+        if (json) {
+          const summaries = json.data ?? [];
+          if (summaries.length > 0) {
+            platformData[p] = summaries[0];
+          }
+        }
+      });
+
+      // Aggregate into AllPlatformsViewData
+      let totalSpend = 0;
+      let totalRevenue = 0;
+      let prevTotalSpend = 0;
+      let prevTotalRevenue = 0;
+      let hasPrev = false;
+
+      const allPlatforms: AllPlatformsViewData["platforms"] = {};
+
+      // Time series merge map: date -> { spend, revenue }
+      const tsMap = new Map<string, { spend: number; revenue: number }>();
+
+      // Process ad platforms (meta, google)
+      for (const p of ["meta", "google"] as const) {
+        const data = platformData[p];
+        if (!data) continue;
+        const metrics = data.metrics as Record<string, number> | undefined;
+        const prevMetrics = data.previousPeriodMetrics as Record<string, number> | undefined;
+        const timeSeries = (data.timeSeries ?? []) as Array<Record<string, unknown>>;
+
+        const spend = metrics?.spend ?? 0;
+        const revenue = metrics?.revenue ?? 0;
+        const conversions = metrics?.conversions ?? 0;
+        const roas = spend > 0 ? revenue / spend : 0;
+
+        allPlatforms[p] = { spend, revenue, conversions, roas };
+        totalSpend += spend;
+        totalRevenue += revenue;
+
+        if (prevMetrics) {
+          hasPrev = true;
+          prevTotalSpend += prevMetrics.spend ?? 0;
+          prevTotalRevenue += prevMetrics.revenue ?? 0;
+        }
+
+        // Merge time series
+        for (const ts of timeSeries) {
+          const date = ts.date as string;
+          const tsMetrics = ts.metrics as Record<string, number> | undefined;
+          const existing = tsMap.get(date) ?? { spend: 0, revenue: 0 };
+          existing.spend += tsMetrics?.spend ?? 0;
+          existing.revenue += tsMetrics?.revenue ?? 0;
+          tsMap.set(date, existing);
+        }
+      }
+
+      // Process Shopify (e-commerce)
+      const shopifyData = platformData["shopify"];
+      if (shopifyData) {
+        const metrics = shopifyData.metrics as Record<string, number> | undefined;
+        const prevMetrics = shopifyData.previousPeriodMetrics as Record<string, number> | undefined;
+        const timeSeries = (shopifyData.timeSeries ?? []) as Array<Record<string, unknown>>;
+
+        const shopifyRevenue = metrics?.revenue ?? 0;
+        const shopifyOrders = metrics?.orders ?? 0;
+
+        allPlatforms.shopify = { revenue: shopifyRevenue, orders: shopifyOrders };
+
+        // Shopify revenue is the primary revenue source (replaces ad platform revenue for MER calc)
+        if (shopifyRevenue > 0) {
+          totalRevenue = shopifyRevenue;
+          if (prevMetrics) {
+            hasPrev = true;
+            prevTotalRevenue = prevMetrics.revenue ?? 0;
+          }
+        }
+
+        // Add Shopify revenue to time series
+        for (const ts of timeSeries) {
+          const date = ts.date as string;
+          const tsMetrics = ts.metrics as { revenue?: number } | undefined;
+          const existing = tsMap.get(date) ?? { spend: 0, revenue: 0 };
+          if (shopifyRevenue > 0) {
+            // Use Shopify revenue instead of ad platform revenue
+            existing.revenue = tsMetrics?.revenue ?? 0;
+          }
+          tsMap.set(date, existing);
+        }
+      }
+
+      const mer = totalSpend > 0 ? totalRevenue / totalSpend : 0;
+      const roas = mer; // For blended view, ROAS = MER
+
+      const prevMer = prevTotalSpend > 0 ? prevTotalRevenue / prevTotalSpend : 0;
+
+      // Sort time series by date
+      const timeSeries = [...tsMap.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, vals]) => ({ date, spend: vals.spend, revenue: vals.revenue }));
+
+      setAllPlatformsData({
+        totalSpend,
+        totalRevenue,
+        mer,
+        roas,
+        platforms: allPlatforms,
+        previousPeriod: hasPrev
+          ? { totalSpend: prevTotalSpend, totalRevenue: prevTotalRevenue, mer: prevMer, roas: prevMer }
+          : undefined,
+        timeSeries,
+      });
+    } catch {
+      // silent
+    } finally {
+      setAllPlatformsLoading(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientId, platforms.join(",")]);
+
+  useEffect(() => {
+    if (activeTab === "all" && client) {
+      fetchAllPlatforms();
+    }
+  }, [activeTab, client, fetchAllPlatforms]);
+
+  // Fetch analytics for selected platform tab (not "all")
   const fetchAnalytics = useCallback(async () => {
-    if (!activePlatform || !clientId) return;
+    if (!activeTab || activeTab === "all" || !clientId) return;
     setAnalyticsLoading(true);
     setAnalyticsData(null);
     setErrors([]);
     setAccountsFound(null);
     try {
-      const res = await fetch(`/api/analytics?platform=${activePlatform}&clientId=${clientId}`);
+      const res = await fetch(`/api/analytics?platform=${activeTab}&clientId=${clientId}`);
       if (res.ok) {
         const json = await res.json();
         setErrors(json.errors ?? []);
@@ -142,11 +270,13 @@ export default function ClientDetailPage() {
     } finally {
       setAnalyticsLoading(false);
     }
-  }, [activePlatform, clientId]);
+  }, [activeTab, clientId]);
 
   useEffect(() => {
-    fetchAnalytics();
-  }, [fetchAnalytics]);
+    if (activeTab !== "all") {
+      fetchAnalytics();
+    }
+  }, [activeTab, fetchAnalytics]);
 
   const renameClient = async () => {
     const name = editName.trim();
@@ -186,7 +316,8 @@ export default function ClientDetailPage() {
       });
       setUnassigningId(null);
       fetchClient();
-      fetchAnalytics();
+      if (activeTab === "all") fetchAllPlatforms();
+      else fetchAnalytics();
     } catch {
       // silent
     }
@@ -201,7 +332,8 @@ export default function ClientDetailPage() {
       });
       setReassigningId(null);
       fetchClient();
-      fetchAnalytics();
+      if (activeTab === "all") fetchAllPlatforms();
+      else fetchAnalytics();
     } catch {
       // silent
     }
@@ -210,7 +342,7 @@ export default function ClientDetailPage() {
   if (loading) {
     return (
       <div className="p-6">
-        <AnalyticsSkeleton variant="meta" />
+        <AnalyticsSkeleton variant="overview" />
       </div>
     );
   }
@@ -223,21 +355,29 @@ export default function ClientDetailPage() {
     );
   }
 
-  const platforms = [...new Set(client.adAccounts.map((a) => a.platform))] as ActivePlatform[];
+  // Build tab list: "All Platforms" is always first, then connected platforms
+  const availableTabs: Array<{ id: ActiveTab; label: string; color?: string }> = [
+    { id: "all", label: "All Platforms" },
+    ...platforms.map((p) => ({
+      id: p as ActiveTab,
+      label: PLATFORM_LABELS[p] ?? p.charAt(0).toUpperCase() + p.slice(1),
+      color: PLATFORM_COLORS[p],
+    })),
+  ];
 
   return (
     <div className="p-6">
       {/* Header */}
       <div className="mb-6">
         <Link
-          href="/dashboard"
+          href="/dashboard/clients"
           className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium transition-colors"
           style={{ color: "var(--text-tertiary)" }}
         >
           <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
             <path fillRule="evenodd" d="M17 10a.75.75 0 0 1-.75.75H5.612l4.158 3.96a.75.75 0 1 1-1.04 1.08l-5.5-5.25a.75.75 0 0 1 0-1.08l5.5-5.25a.75.75 0 0 1 1.04 1.08L5.612 9.25H16.25A.75.75 0 0 1 17 10Z" clipRule="evenodd" />
           </svg>
-          Back to Overview
+          Back to Clients
         </Link>
         <div className="flex items-center gap-3">
           {editingName ? (
@@ -288,59 +428,6 @@ export default function ClientDetailPage() {
           {client.adAccounts.length} data source{client.adAccounts.length !== 1 ? "s" : ""} assigned
         </p>
       </div>
-
-      {/* Cross-platform summary */}
-      {overview && (overview.totalSpend > 0 || overview.totalRevenue > 0) && (
-        <div
-          className="mb-6 flex flex-wrap items-center gap-6 rounded-xl px-5 py-4"
-          style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}
-        >
-          {overview.totalSpend > 0 && (
-            <div>
-              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Total Spend</p>
-              <p className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
-                ${overview.totalSpend.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-              </p>
-            </div>
-          )}
-          {overview.totalRevenue > 0 && (
-            <div>
-              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Revenue</p>
-              <p className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
-                ${overview.totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-              </p>
-            </div>
-          )}
-          {overview.totalSpend > 0 && overview.totalRevenue > 0 && (
-            <div>
-              <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>ROAS</p>
-              <p className="text-lg font-bold" style={{ color: "var(--status-positive)" }}>
-                {(overview.totalRevenue / overview.totalSpend).toFixed(2)}x
-              </p>
-            </div>
-          )}
-          <div className="flex flex-wrap gap-2">
-            {overview.platforms.meta && (
-              <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium" style={{ background: "#1877F218", color: "#1877F2" }}>
-                <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#1877F2" }} />
-                Meta: ${overview.platforms.meta.spend.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-              </span>
-            )}
-            {overview.platforms.google && (
-              <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium" style={{ background: "#4285F418", color: "#4285F4" }}>
-                <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#4285F4" }} />
-                Google: ${overview.platforms.google.spend.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-              </span>
-            )}
-            {overview.platforms.shopify && (
-              <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium" style={{ background: "#96BF4818", color: "#96BF48" }}>
-                <span className="h-1.5 w-1.5 rounded-full" style={{ background: "#96BF48" }} />
-                Shopify: {overview.platforms.shopify.orders} orders
-              </span>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Delete confirmation modal */}
       {showDeleteConfirm && (
@@ -410,55 +497,45 @@ export default function ClientDetailPage() {
       })()}
 
       {/* Platform tabs */}
-      {platforms.length > 0 && (
-        <div className="mb-6 flex gap-1 rounded-lg p-0.5" style={{ background: "var(--bg-secondary)" }}>
-          {platforms.map((p) => (
-            <button
-              key={p}
-              onClick={() => setActivePlatform(p)}
-              className="rounded-md px-4 py-2 text-sm font-medium transition-all"
-              style={{
-                background: activePlatform === p ? "var(--bg-card)" : "transparent",
-                color: activePlatform === p ? (PLATFORM_COLORS[p] ?? "var(--text-primary)") : "var(--text-tertiary)",
-                boxShadow: activePlatform === p ? "var(--shadow-sm)" : "none",
-              }}
-            >
-              {p.charAt(0).toUpperCase() + p.slice(1)}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="mb-6 flex gap-1 rounded-lg p-0.5" style={{ background: "var(--bg-secondary)" }}>
+        {availableTabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className="rounded-md px-4 py-2 text-sm font-medium transition-all"
+            style={{
+              background: activeTab === tab.id ? "var(--bg-card)" : "transparent",
+              color: activeTab === tab.id
+                ? (tab.color ?? "var(--accent-primary)")
+                : "var(--text-tertiary)",
+              boxShadow: activeTab === tab.id ? "var(--shadow-sm)" : "none",
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
       {/* Analytics view */}
-      {analyticsLoading ? (
-        <AnalyticsSkeleton variant={activePlatform === "shopify" ? "shopify" : activePlatform === "google" ? "google" : "meta"} />
-      ) : activePlatform ? (
+      {activeTab === "all" ? (
+        allPlatformsLoading ? (
+          <AnalyticsSkeleton variant="overview" />
+        ) : (
+          <AllPlatformsView data={allPlatformsData ?? undefined} />
+        )
+      ) : analyticsLoading ? (
+        <AnalyticsSkeleton variant={activeTab === "shopify" ? "shopify" : activeTab === "google" ? "google" : "meta"} />
+      ) : (
         <>
-          <AnalyticsErrorBanner errors={errors} accountsFound={accountsFound} platform={activePlatform.charAt(0).toUpperCase() + activePlatform.slice(1)} />
-          {activePlatform === "meta" ? (
+          <AnalyticsErrorBanner errors={errors} accountsFound={accountsFound} platform={PLATFORM_LABELS[activeTab] ?? activeTab} />
+          {activeTab === "meta" ? (
             <MetaView data={analyticsData ? transformMetaData(analyticsData) : undefined} />
-          ) : activePlatform === "google" ? (
+          ) : activeTab === "google" ? (
             <GoogleView data={analyticsData ? transformGoogleData(analyticsData) : undefined} />
-          ) : activePlatform === "shopify" ? (
+          ) : activeTab === "shopify" ? (
             <ShopifyView data={analyticsData ? transformShopifyData(analyticsData) : undefined} />
           ) : null}
         </>
-      ) : (
-        <div
-          className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed py-16"
-          style={{ borderColor: "var(--border-primary)" }}
-        >
-          <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
-            No data sources assigned to this client.
-          </p>
-          <Link
-            href="/dashboard/data-sources"
-            className="mt-2 text-sm font-medium"
-            style={{ color: "var(--accent-primary)" }}
-          >
-            Assign data sources
-          </Link>
-        </div>
       )}
 
       {/* Data sources list */}
@@ -475,79 +552,97 @@ export default function ClientDetailPage() {
             Generate Deck
           </Link>
         </div>
-        <div className="space-y-2">
-          {client.adAccounts.map((acc) => (
-            <div
-              key={acc.id}
-              className="flex items-center gap-3 rounded-lg px-4 py-3"
-              style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}
+        {client.adAccounts.length === 0 ? (
+          <div
+            className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed py-10"
+            style={{ borderColor: "var(--border-primary)" }}
+          >
+            <p className="text-sm" style={{ color: "var(--text-tertiary)" }}>
+              No data sources assigned to this client.
+            </p>
+            <Link
+              href="/dashboard/data-sources"
+              className="mt-2 text-sm font-medium"
+              style={{ color: "var(--accent-primary)" }}
             >
-              <span
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold text-white"
-                style={{ background: PLATFORM_COLORS[acc.platform] ?? "#666" }}
+              Assign data sources
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {client.adAccounts.map((acc) => (
+              <div
+                key={acc.id}
+                className="flex items-center gap-3 rounded-lg px-4 py-3"
+                style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}
               >
-                {acc.platform.charAt(0).toUpperCase()}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium" style={{ color: "var(--text-primary)" }}>
-                  {acc.name}
-                </p>
-                <p className="truncate text-xs" style={{ color: "var(--text-tertiary)" }}>
-                  {acc.platformId}
-                </p>
-              </div>
-              <span
-                className="rounded-full px-2 py-0.5 text-xs font-medium"
-                style={{
-                  background: acc.status === "active" ? "var(--status-positive-light)" : "var(--bg-tertiary)",
-                  color: acc.status === "active" ? "var(--status-positive)" : "var(--text-tertiary)",
-                }}
-              >
-                {acc.status}
-              </span>
-              {reassigningId === acc.id ? (
-                <select
-                  autoFocus
-                  defaultValue=""
-                  onChange={(e) => {
-                    if (e.target.value) reassignDataSource(acc.id, e.target.value);
-                  }}
-                  onBlur={() => setReassigningId(null)}
-                  className="rounded-lg px-2 py-1 text-xs outline-none"
+                <span
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold text-white"
+                  style={{ background: PLATFORM_COLORS[acc.platform] ?? "#666" }}
+                >
+                  {acc.platform.charAt(0).toUpperCase()}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                    {acc.name}
+                  </p>
+                  <p className="truncate text-xs" style={{ color: "var(--text-tertiary)" }}>
+                    {acc.platformId}
+                  </p>
+                </div>
+                <span
+                  className="rounded-full px-2 py-0.5 text-xs font-medium"
                   style={{
-                    background: "var(--bg-secondary)",
-                    border: "1px solid var(--border-primary)",
-                    color: "var(--text-primary)",
+                    background: acc.status === "active" ? "var(--status-positive-light)" : "var(--bg-tertiary)",
+                    color: acc.status === "active" ? "var(--status-positive)" : "var(--text-tertiary)",
                   }}
                 >
-                  <option value="" disabled>Move to...</option>
-                  {allClients
-                    .filter((c) => c.id !== clientId)
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                </select>
-              ) : (
+                  {acc.status}
+                </span>
+                {reassigningId === acc.id ? (
+                  <select
+                    autoFocus
+                    defaultValue=""
+                    onChange={(e) => {
+                      if (e.target.value) reassignDataSource(acc.id, e.target.value);
+                    }}
+                    onBlur={() => setReassigningId(null)}
+                    className="rounded-lg px-2 py-1 text-xs outline-none"
+                    style={{
+                      background: "var(--bg-secondary)",
+                      border: "1px solid var(--border-primary)",
+                      color: "var(--text-primary)",
+                    }}
+                  >
+                    <option value="" disabled>Move to...</option>
+                    {allClients
+                      .filter((c) => c.id !== clientId)
+                      .map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                  </select>
+                ) : (
+                  <button
+                    onClick={() => setReassigningId(acc.id)}
+                    className="rounded-md px-2 py-1 text-xs font-medium"
+                    style={{ color: "var(--text-tertiary)", background: "var(--bg-secondary)" }}
+                    title="Reassign to another client"
+                  >
+                    Move
+                  </button>
+                )}
                 <button
-                  onClick={() => setReassigningId(acc.id)}
+                  onClick={() => setUnassigningId(acc.id)}
                   className="rounded-md px-2 py-1 text-xs font-medium"
-                  style={{ color: "var(--text-tertiary)", background: "var(--bg-secondary)" }}
-                  title="Reassign to another client"
+                  style={{ color: "var(--status-negative, #ef4444)" }}
+                  title="Unassign from this client"
                 >
-                  Move
+                  Unassign
                 </button>
-              )}
-              <button
-                onClick={() => setUnassigningId(acc.id)}
-                className="rounded-md px-2 py-1 text-xs font-medium"
-                style={{ color: "var(--status-negative, #ef4444)" }}
-                title="Unassign from this client"
-              >
-                Unassign
-              </button>
-            </div>
-          ))}
-        </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

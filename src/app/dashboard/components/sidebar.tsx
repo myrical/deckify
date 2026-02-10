@@ -20,7 +20,6 @@ interface NavItem {
 
 const NAV_ITEMS: { section: string; items: NavItem[] }[] = [
   { section: "Analytics", items: [
-    { href: "/dashboard", label: "Overview", icon: "chart" },
     { href: "/dashboard/clients", label: "Clients", icon: "users" },
   ]},
   { section: "Manage", items: [
@@ -75,9 +74,7 @@ export function Sidebar({ connectionCount, unassignedCount, connectedPlatforms }
               {section.section}
             </p>
             {section.items.map((item) => {
-              const isActive = item.href === "/dashboard"
-                ? pathname === "/dashboard"
-                : pathname.startsWith(item.href);
+              const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
               const isConnected = !item.platform || connectedPlatforms.includes(item.platform);
               const platformColor = item.platform ? PLATFORM_COLORS[item.platform] : undefined;
 
