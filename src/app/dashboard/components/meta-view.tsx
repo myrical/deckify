@@ -6,7 +6,7 @@ import { CampaignChart } from "./charts/campaign-chart";
 import { TimeSeriesChart } from "./charts/time-series-chart";
 
 interface MetaAdSetRow { id: string; name: string; campaignName: string; spend: number; impressions: number; clicks: number; conversions: number; cpa: number; roas: number; }
-interface MetaCreative { id: string; name: string; thumbnailUrl?: string; format?: "image" | "video" | "carousel" | "text"; campaignName: string; adSetName: string; spend: number; impressions: number; clicks: number; conversions: number; cpa: number; roas: number; ctr: number; }
+interface MetaCreative { id: string; name: string; thumbnailUrl?: string; previewUrl?: string; format?: "image" | "video" | "carousel" | "text"; campaignName: string; adSetName: string; spend: number; impressions: number; clicks: number; conversions: number; cpa: number; roas: number; ctr: number; }
 
 interface MetaViewData {
   accountName: string; spend: number; revenue?: number; impressions: number; clicks: number; conversions: number; roas: number; ctr: number; cpc: number; cpa: number;
@@ -27,6 +27,7 @@ const SORT_OPTIONS: { key: SortKey; label: string; ascending?: boolean }[] = [
   { key: "conversions", label: "Conversions" },
   { key: "clicks", label: "Clicks" },
 ];
+const CREATIVES_PER_PAGE = 10;
 
 function pctChange(current: number, previous?: number): number | undefined { if (previous === undefined || previous === 0) return undefined; return ((current - previous) / previous) * 100; }
 function fmt(n: number): string { return "$" + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
@@ -38,12 +39,14 @@ function roasColor(roas: number): string {
 }
 
 function CreativeCard({ creative }: { creative: MetaCreative }) {
+  const previewUrl = creative.previewUrl ?? creative.thumbnailUrl;
+  const mediaClass = creative.format === "video" ? "h-full w-full object-contain p-1" : "h-full w-full object-cover";
   return (
     <div className="group overflow-hidden rounded-xl transition-all duration-200 hover:-translate-y-0.5" style={{ border: "1px solid var(--border-primary)", boxShadow: "var(--shadow-sm)" }}>
-      <div className="relative" style={{ aspectRatio: "4/5", background: "var(--bg-tertiary)" }}>
-        {creative.thumbnailUrl ? (
+      <div className="relative" style={{ aspectRatio: "4/5", background: creative.format === "video" ? "#0b0f19" : "var(--bg-tertiary)" }}>
+        {previewUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={`/api/image-proxy?url=${encodeURIComponent(creative.thumbnailUrl)}`} alt={creative.name} className="h-full w-full object-cover" loading="lazy" />
+          <img src={`/api/image-proxy?url=${encodeURIComponent(previewUrl)}`} alt={creative.name} className={mediaClass} loading="lazy" />
         ) : (
           <div className="flex h-full items-center justify-center">
             <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>No preview</span>
@@ -132,6 +135,7 @@ export function MetaView({ data }: { data?: MetaViewData }) {
   const [minSpend, setMinSpend] = useState(0);
   const [minRoas, setMinRoas] = useState(0);
   const [campaignFilter, setCampaignFilter] = useState("");
+  const [creativePage, setCreativePage] = useState(1);
 
   const creatives = data?.creatives ?? [];
   const campaigns = data?.campaigns ?? [];
@@ -175,6 +179,12 @@ export function MetaView({ data }: { data?: MetaViewData }) {
 
     return result;
   })();
+  const totalCreativePages = Math.max(1, Math.ceil(filteredCreatives.length / CREATIVES_PER_PAGE));
+  const currentCreativePage = Math.min(creativePage, totalCreativePages);
+  const paginatedCreatives = filteredCreatives.slice(
+    (currentCreativePage - 1) * CREATIVES_PER_PAGE,
+    currentCreativePage * CREATIVES_PER_PAGE,
+  );
 
   if (!data) return null;
 
@@ -339,21 +349,27 @@ export function MetaView({ data }: { data?: MetaViewData }) {
                 <SelectControl
                   label="Sort by"
                   value={sortBy}
-                  onChange={(v) => setSortBy(v as SortKey)}
+                  onChange={(v) => {
+                    setSortBy(v as SortKey);
+                    setCreativePage(1);
+                  }}
                   options={SORT_OPTIONS.map((o) => ({ value: o.key, label: o.label + (o.ascending ? " (low first)" : "") }))}
                 />
-                <NumberInput label="Min Spend" value={minSpend} onChange={setMinSpend} prefix="$" placeholder="0" />
-                <NumberInput label="Min ROAS" value={minRoas} onChange={setMinRoas} placeholder="0" />
+                <NumberInput label="Min Spend" value={minSpend} onChange={(v) => { setMinSpend(v); setCreativePage(1); }} prefix="$" placeholder="0" />
+                <NumberInput label="Min ROAS" value={minRoas} onChange={(v) => { setMinRoas(v); setCreativePage(1); }} placeholder="0" />
                 <SelectControl
                   label="Campaign"
                   value={campaignFilter}
-                  onChange={setCampaignFilter}
+                  onChange={(v) => {
+                    setCampaignFilter(v);
+                    setCreativePage(1);
+                  }}
                   options={[{ value: "", label: "All Campaigns" }, ...campaignNames.map((n) => ({ value: n, label: n.length > 30 ? n.slice(0, 30) + "..." : n }))]}
                 />
                 <div className="ml-auto flex items-center gap-2">
                   {hasActiveFilters && (
                     <button
-                      onClick={() => { setMinSpend(0); setMinRoas(0); setCampaignFilter(""); }}
+                      onClick={() => { setMinSpend(0); setMinRoas(0); setCampaignFilter(""); setCreativePage(1); }}
                       className="rounded-md px-2 py-1 text-xs font-medium transition-colors hover:opacity-80"
                       style={{ color: "var(--accent-primary)" }}
                     >
@@ -377,16 +393,46 @@ export function MetaView({ data }: { data?: MetaViewData }) {
                   </p>
                 </div>
                 {filteredCreatives.length > 0 ? (
-                  <div className="grid grid-cols-1 gap-4 p-6 min-[500px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {filteredCreatives.map((creative) => (
-                      <CreativeCard key={creative.id} creative={creative} />
-                    ))}
-                  </div>
+                  <>
+                    <div className="grid grid-cols-1 gap-4 p-6 min-[500px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                      {paginatedCreatives.map((creative) => (
+                        <CreativeCard key={creative.id} creative={creative} />
+                      ))}
+                    </div>
+                    {totalCreativePages > 1 && (
+                      <div
+                        className="flex items-center justify-between px-6 py-4"
+                        style={{ borderTop: "1px solid var(--border-primary)", background: "var(--bg-secondary)" }}
+                      >
+                        <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+                          Page {currentCreativePage} of {totalCreativePages}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setCreativePage((p) => Math.max(1, p - 1))}
+                            disabled={currentCreativePage === 1}
+                            className="rounded-md px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50"
+                            style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)", color: "var(--text-primary)" }}
+                          >
+                            Previous
+                          </button>
+                          <button
+                            onClick={() => setCreativePage((p) => Math.min(totalCreativePages, p + 1))}
+                            disabled={currentCreativePage === totalCreativePages}
+                            className="rounded-md px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50"
+                            style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)", color: "var(--text-primary)" }}
+                          >
+                            Next
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-12">
                     <p className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>No creatives match filters</p>
                     <button
-                      onClick={() => { setMinSpend(0); setMinRoas(0); setCampaignFilter(""); }}
+                      onClick={() => { setMinSpend(0); setMinRoas(0); setCampaignFilter(""); setCreativePage(1); }}
                       className="mt-2 text-xs font-medium transition-colors hover:opacity-80"
                       style={{ color: "var(--accent-primary)" }}
                     >

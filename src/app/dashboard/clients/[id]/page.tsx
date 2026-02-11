@@ -540,6 +540,7 @@ function transformMetaData(s: Record<string, unknown>) {
         id: c.id as string,
         name: c.name as string,
         thumbnailUrl: c.thumbnailUrl as string | undefined,
+        previewUrl: c.previewUrl as string | undefined,
         format: (c.format as string | undefined) as "image" | "video" | "carousel" | "text" | undefined,
         campaignName: c.campaignName as string,
         adSetName: (c.adSetName as string) ?? "",
