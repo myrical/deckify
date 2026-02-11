@@ -113,6 +113,7 @@ interface GaqlRow {
     currencyCode?: string;
     timeZone?: string;
     status?: string;
+    manager?: boolean;
   };
 }
 
@@ -120,17 +121,25 @@ async function executeGaql(
   customerId: string,
   query: string,
   accessToken: string,
-  developerToken: string
+  developerToken: string,
+  loginCustomerId?: string
 ): Promise<GaqlRow[]> {
   const url = `https://googleads.googleapis.com/v20/customers/${customerId}/googleAds:searchStream`;
 
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${accessToken}`,
+    "developer-token": developerToken,
+    "Content-Type": "application/json",
+  };
+
+  // Required when accessing sub-accounts through an MCC/manager account
+  if (loginCustomerId) {
+    headers["login-customer-id"] = loginCustomerId;
+  }
+
   const result = await googleAdsFetch<Array<{ results: GaqlRow[] }>>(url, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "developer-token": developerToken,
-      "Content-Type": "application/json",
-    },
+    headers,
     body: JSON.stringify({ query }),
   });
 
@@ -272,39 +281,53 @@ export class GoogleAdsConnector implements AdPlatformConnector {
     });
 
     const accounts: AdAccount[] = [];
+    const seenIds = new Set<string>();
 
     for (const resourceName of result.resourceNames) {
       const customerId = resourceName.replace("customers/", "");
       try {
+        // Use login-customer-id = customerId since this is an MCC querying its sub-accounts
         const rows = await executeGaql(
           customerId,
-          `SELECT customer_client.id, customer_client.descriptive_name, customer_client.currency_code, customer_client.time_zone, customer_client.status FROM customer_client WHERE customer_client.status = 'ENABLED'`,
+          `SELECT customer_client.id, customer_client.descriptive_name, customer_client.currency_code, customer_client.time_zone, customer_client.status, customer_client.manager FROM customer_client WHERE customer_client.status = 'ENABLED'`,
           tokenSet.accessToken,
-          developerToken
+          developerToken,
+          customerId
         );
 
         for (const row of rows) {
           if (row.customerClient) {
+            const accountId = row.customerClient.id ?? customerId;
+            // Skip duplicates (same account accessible from multiple MCCs)
+            if (seenIds.has(accountId)) continue;
+            seenIds.add(accountId);
+
+            // If the sub-account is different from the MCC, store the MCC as managerCustomerId
+            const isSubAccount = accountId !== customerId;
             accounts.push({
-              id: row.customerClient.id ?? customerId,
-              name: row.customerClient.descriptiveName ?? `Account ${customerId}`,
+              id: accountId,
+              name: row.customerClient.descriptiveName ?? `Account ${accountId}`,
               platform: "google",
               currency: row.customerClient.currencyCode ?? "USD",
               timezone: row.customerClient.timeZone ?? "America/New_York",
               status: row.customerClient.status === "ENABLED" ? "active" : "disabled",
+              managerCustomerId: isSubAccount ? customerId : undefined,
             });
           }
         }
       } catch {
-        // Some accounts may not be queryable — skip
-        accounts.push({
-          id: customerId,
-          name: `Account ${customerId}`,
-          platform: "google",
-          currency: "USD",
-          timezone: "America/New_York",
-          status: "active",
-        });
+        // Some accounts may not be queryable (no sub-accounts) — add the MCC itself
+        if (!seenIds.has(customerId)) {
+          seenIds.add(customerId);
+          accounts.push({
+            id: customerId,
+            name: `Account ${customerId}`,
+            platform: "google",
+            currency: "USD",
+            timezone: "America/New_York",
+            status: "active",
+          });
+        }
       }
     }
 
@@ -312,7 +335,7 @@ export class GoogleAdsConnector implements AdPlatformConnector {
   }
 
   async fetchCampaigns(params: FetchParams): Promise<NormalizedCampaign[]> {
-    const { accountId, tokenSet, dateRange } = params;
+    const { accountId, tokenSet, dateRange, loginCustomerId } = params;
     const { developerToken } = getGoogleAdsConfig();
 
     const query = `
@@ -338,7 +361,8 @@ export class GoogleAdsConnector implements AdPlatformConnector {
       accountId,
       query,
       tokenSet.accessToken,
-      developerToken
+      developerToken,
+      loginCustomerId
     );
 
     return rows.map((row) => ({
@@ -352,14 +376,14 @@ export class GoogleAdsConnector implements AdPlatformConnector {
   }
 
   async fetchAccountSummary(params: MetricsParams): Promise<AccountSummary> {
-    const { accountId, tokenSet, dateRange } = params;
+    const { accountId, tokenSet, dateRange, loginCustomerId } = params;
     const { developerToken } = getGoogleAdsConfig();
 
     // Fetch campaigns, time series, and device breakdown in parallel
     const [campaigns, timeSeries, deviceBreakdown] = await Promise.all([
-      this.fetchCampaigns({ accountId, tokenSet, dateRange }),
-      this.fetchTimeSeries(accountId, tokenSet, dateRange, developerToken),
-      this.fetchDeviceBreakdown(accountId, tokenSet, dateRange, developerToken),
+      this.fetchCampaigns({ accountId, tokenSet, dateRange, loginCustomerId }),
+      this.fetchTimeSeries(accountId, tokenSet, dateRange, developerToken, loginCustomerId),
+      this.fetchDeviceBreakdown(accountId, tokenSet, dateRange, developerToken, loginCustomerId),
     ]);
 
     const metrics = this.aggregateMetrics(campaigns, dateRange);
@@ -377,6 +401,7 @@ export class GoogleAdsConnector implements AdPlatformConnector {
         accountId,
         tokenSet,
         dateRange: previousDateRange,
+        loginCustomerId,
       });
       previousPeriodMetrics = this.aggregateMetrics(prevCampaigns, previousDateRange);
     } catch {
@@ -409,7 +434,8 @@ export class GoogleAdsConnector implements AdPlatformConnector {
     accountId: string,
     tokenSet: TokenSet,
     dateRange: DateRange,
-    developerToken: string
+    developerToken: string,
+    loginCustomerId?: string
   ): Promise<NormalizedTimeSeries[]> {
     const query = `
       SELECT
@@ -425,7 +451,7 @@ export class GoogleAdsConnector implements AdPlatformConnector {
       ORDER BY segments.date ASC
     `;
 
-    const rows = await executeGaql(accountId, query, tokenSet.accessToken, developerToken);
+    const rows = await executeGaql(accountId, query, tokenSet.accessToken, developerToken, loginCustomerId);
 
     // Aggregate by date (rows are per-campaign-per-date)
     const dateMap = new Map<string, GaqlRow[]>();
@@ -445,7 +471,8 @@ export class GoogleAdsConnector implements AdPlatformConnector {
     accountId: string,
     tokenSet: TokenSet,
     dateRange: DateRange,
-    developerToken: string
+    developerToken: string,
+    loginCustomerId?: string
   ): Promise<NormalizedBreakdown> {
     const query = `
       SELECT
@@ -460,7 +487,7 @@ export class GoogleAdsConnector implements AdPlatformConnector {
       WHERE segments.date BETWEEN '${formatDate(dateRange.start)}' AND '${formatDate(dateRange.end)}'
     `;
 
-    const rows = await executeGaql(accountId, query, tokenSet.accessToken, developerToken);
+    const rows = await executeGaql(accountId, query, tokenSet.accessToken, developerToken, loginCustomerId);
 
     const deviceMap = new Map<string, GaqlRow[]>();
     for (const row of rows) {

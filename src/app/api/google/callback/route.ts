@@ -118,8 +118,16 @@ export async function GET(request: Request) {
       console.log("[Google Callback] Starting account discovery...");
       console.log("[Google Callback] Scopes:", scopes);
       const adAccounts = await connector.listAccounts(tokenSet);
-      console.log(`[Google Callback] Found ${adAccounts.length} accounts:`, adAccounts.map(a => `${a.id} (${a.name})`));
+      console.log(`[Google Callback] Found ${adAccounts.length} accounts:`, adAccounts.map(a => `${a.id} (${a.name})${a.managerCustomerId ? ` [MCC: ${a.managerCustomerId}]` : ""}`));
       accountCount = adAccounts.length;
+
+      // Build a managerMap: { subAccountId → managerCustomerId }
+      const managerMap: Record<string, string> = {};
+      for (const account of adAccounts) {
+        if (account.managerCustomerId) {
+          managerMap[account.id] = account.managerCustomerId;
+        }
+      }
 
       for (const account of adAccounts) {
         await db.adAccount.upsert({
@@ -146,6 +154,18 @@ export async function GET(request: Request) {
             platformAuthId: platformAuth.id,
           },
         });
+      }
+
+      // Store the manager mapping in platformMeta so we can use it for API calls
+      if (Object.keys(managerMap).length > 0) {
+        const existingMeta = (platformAuth.platformMeta as Record<string, unknown>) ?? {};
+        await db.platformAuth.update({
+          where: { id: platformAuth.id },
+          data: {
+            platformMeta: { ...existingMeta, managerMap },
+          },
+        });
+        console.log("[Google Callback] Stored managerMap:", managerMap);
       }
     } catch (listErr) {
       // If account discovery fails (e.g. no developer token), create a placeholder

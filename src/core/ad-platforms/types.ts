@@ -35,6 +35,8 @@ export interface AdAccount {
   currency: string;
   timezone: string;
   status: "active" | "disabled" | "closed";
+  /** For Google Ads: the MCC/manager customer ID needed to access this account */
+  managerCustomerId?: string;
 }
 
 // ─── Fetch Parameters ────────────────────────────────────────────────────────
@@ -43,6 +45,8 @@ export interface FetchParams {
   accountId: string;
   tokenSet: TokenSet;
   dateRange: DateRange;
+  /** For Google Ads: the MCC/manager customer ID needed to access sub-accounts */
+  loginCustomerId?: string;
 }
 
 export interface DateRange {
@@ -192,6 +196,7 @@ export interface AccountSummary {
   campaigns: NormalizedCampaign[];
   timeSeries: NormalizedTimeSeries[];
   breakdowns: NormalizedBreakdown[];
+  creatives?: NormalizedCreative[];
 }
 
 // ─── Connector Interface ─────────────────────────────────────────────────────

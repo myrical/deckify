@@ -136,6 +136,9 @@ export async function getOverviewByClient(orgId: string): Promise<ClientOverview
       for (const acc of googleAccounts) {
         try {
           const connector = new GoogleAdsConnector();
+          // Look up the managerCustomerId from platformMeta.managerMap
+          const managerMap = (acc.platformAuth.platformMeta as { managerMap?: Record<string, string> })?.managerMap;
+          const loginCustomerId = managerMap?.[acc.platformId];
           const summary = await connector.fetchAccountSummary({
             accountId: acc.platformId,
             tokenSet: {
@@ -145,6 +148,7 @@ export async function getOverviewByClient(orgId: string): Promise<ClientOverview
               platform: "google",
             },
             dateRange,
+            loginCustomerId,
             level: "account",
             metrics: ["spend", "conversions", "roas"],
           });
@@ -248,7 +252,7 @@ export async function getGoogleAnalytics(
   const range = dateRange ?? defaultDateRange();
   const accounts = await db.adAccount.findMany({
     where: { clientId, platform: "google", isActive: true },
-    include: { platformAuth: { select: { accessToken: true, refreshToken: true, scopes: true } } },
+    include: { platformAuth: { select: { accessToken: true, refreshToken: true, scopes: true, platformMeta: true } } },
   });
 
   const summaries: AccountSummary[] = [];
@@ -256,6 +260,9 @@ export async function getGoogleAnalytics(
   for (const acc of accounts) {
     try {
       const connector = new GoogleAdsConnector();
+      // Look up the managerCustomerId from platformMeta.managerMap
+      const managerMap = (acc.platformAuth.platformMeta as { managerMap?: Record<string, string> })?.managerMap;
+      const loginCustomerId = managerMap?.[acc.platformId];
       const summary = await connector.fetchAccountSummary({
         accountId: acc.platformId,
         tokenSet: {
@@ -265,6 +272,7 @@ export async function getGoogleAnalytics(
           platform: "google",
         },
         dateRange: range,
+        loginCustomerId,
         level: "account",
         metrics: ["spend", "impressions", "clicks", "conversions", "revenue", "roas", "ctr", "cpc", "cpm", "cpa"],
       });

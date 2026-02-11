@@ -110,7 +110,15 @@ export async function POST(
 
       console.log("[Google Sync] Starting account discovery...");
       const adAccounts = await connector.listAccounts(tokenSet);
-      console.log(`[Google Sync] Found ${adAccounts.length} accounts:`, adAccounts.map(a => `${a.id} (${a.name})`));
+      console.log(`[Google Sync] Found ${adAccounts.length} accounts:`, adAccounts.map(a => `${a.id} (${a.name})${a.managerCustomerId ? ` [MCC: ${a.managerCustomerId}]` : ""}`));
+
+      // Build a managerMap: { subAccountId → managerCustomerId }
+      const managerMap: Record<string, string> = {};
+      for (const account of adAccounts) {
+        if (account.managerCustomerId) {
+          managerMap[account.id] = account.managerCustomerId;
+        }
+      }
 
       let newCount = 0;
       for (const account of adAccounts) {
@@ -162,10 +170,20 @@ export async function POST(
         });
       }
 
+      // Store the manager mapping in platformMeta and update lastSyncAt
+      const existingMeta = (platformAuth.platformMeta as Record<string, unknown>) ?? {};
       await db.platformAuth.update({
         where: { id: platformAuth.id },
-        data: { lastSyncAt: new Date() },
+        data: {
+          lastSyncAt: new Date(),
+          ...(Object.keys(managerMap).length > 0
+            ? { platformMeta: { ...existingMeta, managerMap } }
+            : {}),
+        },
       });
+      if (Object.keys(managerMap).length > 0) {
+        console.log("[Google Sync] Stored managerMap:", managerMap);
+      }
 
       return NextResponse.json({
         synced: adAccounts.length,

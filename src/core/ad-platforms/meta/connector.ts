@@ -13,6 +13,7 @@ import type {
   FetchParams,
   MetricsParams,
   NormalizedCampaign,
+  NormalizedCreative,
   NormalizedMetrics,
   NormalizedTimeSeries,
   NormalizedBreakdown,
@@ -52,6 +53,22 @@ interface MetaAdAccountInfo {
   currency: string;
   timezone_name: string;
   account_status: number;
+}
+
+interface MetaAdRow {
+  id: string;
+  name: string;
+  status: string;
+  campaign?: { id: string; name: string };
+  adset?: { id: string; name: string };
+  creative?: {
+    id: string;
+    name?: string;
+    thumbnail_url?: string;
+    object_story_spec?: {
+      video_data?: { video_id?: string };
+    };
+  };
 }
 
 // ─── Config ──────────────────────────────────────────────────────────────────
@@ -469,6 +486,76 @@ export class MetaAdsConnector implements AdPlatformConnector {
     });
 
     return breakdowns;
+  }
+
+  private async fetchCreatives(
+    accountId: string,
+    tokenSet: TokenSet,
+    dateRange: DateRange
+  ): Promise<NormalizedCreative[]> {
+    const timeRange = JSON.stringify({
+      since: formatDate(dateRange.start),
+      until: formatDate(dateRange.end),
+    });
+
+    // Fetch ads with their creative thumbnails and campaign/adset names
+    const adFields = "id,name,status,campaign{id,name},adset{id,name},creative{id,name,thumbnail_url,object_story_spec}";
+    let ads: MetaAdRow[] = [];
+    let nextUrl: string | null =
+      `${META_GRAPH_URL}/act_${accountId}/ads?fields=${encodeURIComponent(adFields)}&effective_status=["ACTIVE","PAUSED"]&limit=100`;
+
+    while (nextUrl && ads.length < 200) {
+      const result = await metaFetch<{ data: MetaAdRow[]; paging?: { next?: string } }>(
+        nextUrl,
+        tokenSet.accessToken
+      );
+      ads = ads.concat(result.data);
+      nextUrl = result.paging?.next ?? null;
+    }
+
+    if (ads.length === 0) return [];
+
+    // Fetch ad-level insights for the date range
+    const insightFields = "ad_id,spend,impressions,clicks,ctr,cpc,actions,action_values";
+    const insightsResult = await metaFetch<{ data: Array<MetaInsightRow & { ad_id?: string }> }>(
+      `${META_GRAPH_URL}/act_${accountId}/insights?fields=${insightFields}&level=ad&time_range=${encodeURIComponent(timeRange)}&limit=500`,
+      tokenSet.accessToken
+    );
+
+    // Index insights by ad_id
+    const insightsById = new Map<string, MetaInsightRow>();
+    for (const row of insightsResult.data) {
+      if (row.ad_id) insightsById.set(row.ad_id, row);
+    }
+
+    // Join ads with their insights and build NormalizedCreative[]
+    const creatives: NormalizedCreative[] = [];
+    for (const ad of ads) {
+      const insight = insightsById.get(ad.id);
+      const metrics = insight
+        ? normalizeMetrics(insight, dateRange)
+        : { spend: 0, impressions: 0, clicks: 0, conversions: 0, revenue: 0, roas: 0, ctr: 0, cpc: 0, cpm: 0, cpa: 0, dateRange };
+
+      // Skip ads with zero spend — not useful for creative review
+      if (metrics.spend === 0) continue;
+
+      const hasVideo = !!ad.creative?.object_story_spec?.video_data?.video_id;
+      creatives.push({
+        id: ad.id,
+        name: ad.creative?.name ?? ad.name,
+        platform: "meta",
+        campaignName: ad.campaign?.name ?? "Unknown Campaign",
+        adSetName: ad.adset?.name,
+        thumbnailUrl: ad.creative?.thumbnail_url,
+        format: hasVideo ? "video" : "image",
+        metrics,
+      });
+    }
+
+    // Sort by spend descending — most significant creatives first
+    creatives.sort((a, b) => b.metrics.spend - a.metrics.spend);
+
+    return creatives;
   }
 
   private aggregateInsightRows(rows: MetaInsightRow[], dateRange: DateRange): NormalizedMetrics {
