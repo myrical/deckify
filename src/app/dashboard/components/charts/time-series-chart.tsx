@@ -44,6 +44,18 @@ function fmtDate(dateStr: string): string {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
+const CURRENCY_KEYS = ["spend", "revenue", "cost", "cpa", "cpc", "aov"];
+
+function isCurrencyMetric(dataKey: string): boolean {
+  const key = dataKey.toLowerCase();
+  return CURRENCY_KEYS.some((k) => key.includes(k));
+}
+
+function fmtTooltipValue(value: number, dataKey: string): string {
+  if (isCurrencyMetric(dataKey)) return fmtCurrency(value);
+  return fmtNumber(value);
+}
+
 function CustomTooltip({
   active,
   payload,
@@ -71,9 +83,7 @@ function CustomTooltip({
           <span style={{ color: "var(--text-secondary)" }}>{entry.name}:</span>
           <span className="font-medium font-mono" style={{ color: "var(--text-primary)" }}>
             {typeof entry.value === "number"
-              ? entry.value >= 100
-                ? fmtCurrency(entry.value)
-                : entry.value.toLocaleString(undefined, { maximumFractionDigits: 2 })
+              ? fmtTooltipValue(entry.value, entry.dataKey)
               : entry.value}
           </span>
         </div>
