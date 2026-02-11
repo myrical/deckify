@@ -5,28 +5,46 @@ import { db } from "@/lib/db";
 import { ensureOrg } from "@/lib/ensure-org";
 import { MetaAdsConnector } from "@/core/ad-platforms/meta";
 import { PrismError } from "@/core/errors/types";
+import { clearOAuthStateCookie, verifyOAuthState } from "@/lib/oauth-state";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
   const state = searchParams.get("state");
   const error = searchParams.get("error");
+  const cookie = clearOAuthStateCookie("meta");
+  const redirectWithCookieClear = (url: string) => {
+    const response = NextResponse.redirect(url);
+    response.cookies.set(cookie.name, cookie.value, cookie.options);
+    return response;
+  };
 
   if (error) {
-    return NextResponse.redirect(
+    return redirectWithCookieClear(
       `${process.env.NEXTAUTH_URL}/dashboard/data-sources?error=meta_auth_denied`
     );
   }
 
   if (!code) {
-    return NextResponse.redirect(
+    return redirectWithCookieClear(
       `${process.env.NEXTAUTH_URL}/dashboard/data-sources?error=meta_no_code`
+    );
+  }
+
+  const stateResult = verifyOAuthState<{ clientId: string }>({
+    provider: "meta",
+    state,
+    cookieHeader: request.headers.get("cookie"),
+  });
+  if (!stateResult.valid) {
+    return redirectWithCookieClear(
+      `${process.env.NEXTAUTH_URL}/dashboard/data-sources?error=meta_invalid_state`
     );
   }
 
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
-    return NextResponse.redirect(
+    return redirectWithCookieClear(
       `${process.env.NEXTAUTH_URL}/login?error=not_authenticated`
     );
   }
@@ -116,15 +134,14 @@ export async function GET(request: Request) {
       accounts: String(adAccounts.length),
     });
 
-    return NextResponse.redirect(
+    return redirectWithCookieClear(
       `${process.env.NEXTAUTH_URL}/dashboard/data-sources?${params}`
     );
   } catch (err) {
     console.error("[Meta Callback Error]", err);
     const errCode = err instanceof PrismError ? err.code : "unknown_error";
-    const detail = err instanceof Error ? err.message : String(err);
-    const params = new URLSearchParams({ error: errCode, detail });
-    return NextResponse.redirect(
+    const params = new URLSearchParams({ error: errCode });
+    return redirectWithCookieClear(
       `${process.env.NEXTAUTH_URL}/dashboard/data-sources?${params}`
     );
   }

@@ -4,29 +4,48 @@ import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { ensureOrg } from "@/lib/ensure-org";
 import { GoogleAdsConnector } from "@/core/ad-platforms/google-ads/connector";
+import { clearOAuthStateCookie, verifyOAuthState } from "@/lib/oauth-state";
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
+  const state = searchParams.get("state");
   const error = searchParams.get("error");
+  const cookie = clearOAuthStateCookie("google");
+  const redirectWithCookieClear = (url: string) => {
+    const response = NextResponse.redirect(url);
+    response.cookies.set(cookie.name, cookie.value, cookie.options);
+    return response;
+  };
 
   if (error) {
-    return NextResponse.redirect(
+    return redirectWithCookieClear(
       `${process.env.NEXTAUTH_URL}/dashboard/data-sources?error=google_auth_denied`
     );
   }
 
   if (!code) {
-    return NextResponse.redirect(
+    return redirectWithCookieClear(
       `${process.env.NEXTAUTH_URL}/dashboard/data-sources?error=google_no_code`
+    );
+  }
+
+  const stateResult = verifyOAuthState<{ clientId: string }>({
+    provider: "google",
+    state,
+    cookieHeader: request.headers.get("cookie"),
+  });
+  if (!stateResult.valid) {
+    return redirectWithCookieClear(
+      `${process.env.NEXTAUTH_URL}/dashboard/data-sources?error=google_invalid_state`
     );
   }
 
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
-    return NextResponse.redirect(
+    return redirectWithCookieClear(
       `${process.env.NEXTAUTH_URL}/login?error=not_authenticated`
     );
   }
@@ -35,7 +54,7 @@ export async function GET(request: Request) {
     const googleClientId = process.env.GOOGLE_CLIENT_ID;
     const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
     if (!googleClientId || !googleClientSecret) {
-      return NextResponse.redirect(
+      return redirectWithCookieClear(
         `${process.env.NEXTAUTH_URL}/dashboard/data-sources?error=google_not_configured`
       );
     }
@@ -58,7 +77,7 @@ export async function GET(request: Request) {
     if (!tokenResponse.ok) {
       const errorBody = await tokenResponse.text().catch(() => "");
       console.error("Google token exchange failed:", errorBody);
-      return NextResponse.redirect(
+      return redirectWithCookieClear(
         `${process.env.NEXTAUTH_URL}/dashboard/data-sources?error=google_token_exchange_failed`
       );
     }
@@ -205,12 +224,12 @@ export async function GET(request: Request) {
       accounts: String(accountCount),
     });
 
-    return NextResponse.redirect(
+    return redirectWithCookieClear(
       `${process.env.NEXTAUTH_URL}/dashboard/data-sources?${params}`
     );
   } catch (err) {
     console.error("Google OAuth callback error:", err);
-    return NextResponse.redirect(
+    return redirectWithCookieClear(
       `${process.env.NEXTAUTH_URL}/dashboard/data-sources?error=google_connection_failed`
     );
   }

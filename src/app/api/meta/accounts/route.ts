@@ -1,27 +1,61 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { db } from "@/lib/db";
 import { MetaAdsConnector } from "@/core/ad-platforms/meta";
 import { PrismError } from "@/core/errors/types";
 
-export async function POST(request: Request) {
+export async function POST() {
   try {
-    const body = await request.json();
-    const { accessToken } = body;
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
 
-    if (!accessToken) {
-      return NextResponse.json(
-        { error: "accessToken is required" },
-        { status: 400 }
-      );
+    const membership = await db.orgMembership.findFirst({
+      where: { userId: session.user.id },
+      select: { orgId: true },
+    });
+    if (!membership) {
+      return NextResponse.json({ error: "Not authorized" }, { status: 403 });
+    }
+
+    const platformAuths = await db.platformAuth.findMany({
+      where: {
+        orgId: membership.orgId,
+        platform: "meta",
+        status: "active",
+      },
+      select: {
+        accessToken: true,
+        refreshToken: true,
+        scopes: true,
+      },
+    });
+    if (platformAuths.length === 0) {
+      return NextResponse.json({ accounts: [] });
     }
 
     const connector = new MetaAdsConnector();
-    const accounts = await connector.listAccounts({
-      accessToken,
-      scopes: ["ads_read"],
-      platform: "meta",
-    });
+    const accountSets = await Promise.all(
+      platformAuths.map((auth) =>
+        connector.listAccounts({
+          accessToken: auth.accessToken,
+          refreshToken: auth.refreshToken ?? undefined,
+          scopes: auth.scopes,
+          platform: "meta",
+        })
+      )
+    );
 
-    return NextResponse.json({ accounts });
+    const deduped = new Map<string, (typeof accountSets)[number][number]>();
+    for (const set of accountSets) {
+      for (const account of set) {
+        deduped.set(account.id, account);
+      }
+    }
+
+    return NextResponse.json({ accounts: Array.from(deduped.values()) });
   } catch (err) {
     if (err instanceof PrismError) {
       return NextResponse.json(
