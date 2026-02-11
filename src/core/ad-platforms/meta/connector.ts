@@ -65,6 +65,7 @@ interface MetaAdRow {
     id: string;
     name?: string;
     thumbnail_url?: string;
+    image_url?: string;
     object_story_spec?: {
       video_data?: { video_id?: string };
     };
@@ -501,7 +502,7 @@ export class MetaAdsConnector implements AdPlatformConnector {
     });
 
     // Fetch ads with their creative thumbnails and campaign/adset names
-    const adFields = "id,name,status,campaign{id,name},adset{id,name},creative{id,name,thumbnail_url,object_story_spec}";
+    const adFields = "id,name,status,campaign{id,name},adset{id,name},creative{id,name,thumbnail_url,image_url,object_story_spec}";
     let ads: MetaAdRow[] = [];
     let nextUrl: string | null =
       `${META_GRAPH_URL}/act_${accountId}/ads?fields=${encodeURIComponent(adFields)}&effective_status=["ACTIVE","PAUSED"]&limit=100`;
@@ -548,7 +549,7 @@ export class MetaAdsConnector implements AdPlatformConnector {
         platform: "meta",
         campaignName: ad.campaign?.name ?? "Unknown Campaign",
         adSetName: ad.adset?.name,
-        thumbnailUrl: ad.creative?.thumbnail_url,
+        thumbnailUrl: ad.creative?.image_url ?? ad.creative?.thumbnail_url,
         format: hasVideo ? "video" : "image",
         metrics,
       });

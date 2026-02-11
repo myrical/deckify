@@ -9,6 +9,7 @@ import { ShopifyView } from "../../components/shopify-view";
 import { AllPlatformsView, type AllPlatformsViewData } from "../../components/all-platforms-view";
 import { AnalyticsErrorBanner } from "../../components/analytics-error-banner";
 import { AnalyticsSkeleton } from "../../components/loading-skeleton";
+import { DateRangePicker, type DateRangeValue } from "../../components/date-range-picker";
 
 interface AdAccountInfo {
   id: string;
@@ -83,6 +84,9 @@ export default function ClientDetailPage() {
   // Unassign confirmation
   const [unassigningId, setUnassigningId] = useState<string | null>(null);
 
+  // Date range picker
+  const [dateRange, setDateRange] = useState<DateRangeValue | null>(null);
+
   // Fetch client info
   const fetchClient = useCallback(async () => {
     try {
@@ -120,8 +124,9 @@ export default function ClientDetailPage() {
 
     try {
       // Fetch all connected platforms in parallel
+      const dateParams = dateRange ? `&start=${dateRange.start}&end=${dateRange.end}` : "";
       const fetches = platforms.map((p) =>
-        fetch(`/api/analytics?platform=${p}&clientId=${clientId}`)
+        fetch(`/api/analytics?platform=${p}&clientId=${clientId}${dateParams}`)
           .then((res) => (res.ok ? res.json() : null))
           .catch(() => null)
       );
@@ -249,7 +254,7 @@ export default function ClientDetailPage() {
       setAllPlatformsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clientId, platforms.join(",")]);
+  }, [clientId, platforms.join(","), dateRange]);
 
   useEffect(() => {
     if (activeTab === "all" && client) {
@@ -265,7 +270,8 @@ export default function ClientDetailPage() {
     setErrors([]);
     setAccountsFound(null);
     try {
-      const res = await fetch(`/api/analytics?platform=${activeTab}&clientId=${clientId}`);
+      const dateParams = dateRange ? `&start=${dateRange.start}&end=${dateRange.end}` : "";
+      const res = await fetch(`/api/analytics?platform=${activeTab}&clientId=${clientId}${dateParams}`);
       if (res.ok) {
         const json = await res.json();
         setErrors(json.errors ?? []);
@@ -280,7 +286,7 @@ export default function ClientDetailPage() {
     } finally {
       setAnalyticsLoading(false);
     }
-  }, [activeTab, clientId]);
+  }, [activeTab, clientId, dateRange]);
 
   useEffect(() => {
     if (activeTab !== "all") {
@@ -389,12 +395,17 @@ export default function ClientDetailPage() {
           </svg>
           Back to Clients
         </Link>
-        <h1 className="text-3xl font-extrabold tracking-tight" style={{ color: "var(--text-primary)" }}>
-          {client.name}
-        </h1>
-        <p className="mt-0.5 text-sm" style={{ color: "var(--text-tertiary)" }}>
-          Performance Dashboard
-        </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-extrabold tracking-tight" style={{ color: "var(--text-primary)" }}>
+              {client.name}
+            </h1>
+            <p className="mt-0.5 text-sm" style={{ color: "var(--text-tertiary)" }}>
+              Performance Dashboard
+            </p>
+          </div>
+          <DateRangePicker value={dateRange} onChange={setDateRange} />
+        </div>
       </div>
 
       {/* Delete confirmation modal */}
@@ -664,6 +675,7 @@ function transformMetaData(s: Record<string, unknown>) {
         id: c.id as string,
         name: c.name as string,
         thumbnailUrl: c.thumbnailUrl as string | undefined,
+        format: (c.format as string | undefined) as "image" | "video" | "carousel" | "text" | undefined,
         campaignName: c.campaignName as string,
         adSetName: (c.adSetName as string) ?? "",
         spend: cm?.spend ?? 0,
@@ -671,6 +683,7 @@ function transformMetaData(s: Record<string, unknown>) {
         clicks: cm?.clicks ?? 0,
         conversions: cm?.conversions ?? 0,
         cpa: cm?.cpa ?? 0,
+        roas: cm?.roas ?? 0,
         ctr: cm?.ctr ?? 0,
       };
     }),

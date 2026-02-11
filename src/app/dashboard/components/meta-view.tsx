@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { MetricCard } from "./metric-card";
 import { CampaignChart } from "./charts/campaign-chart";
 import { TimeSeriesChart } from "./charts/time-series-chart";
 
 interface MetaAdSetRow { id: string; name: string; campaignName: string; spend: number; impressions: number; clicks: number; conversions: number; cpa: number; roas: number; }
-interface MetaCreative { id: string; name: string; thumbnailUrl?: string; campaignName: string; adSetName: string; spend: number; impressions: number; clicks: number; conversions: number; cpa: number; ctr: number; }
+interface MetaCreative { id: string; name: string; thumbnailUrl?: string; format?: "image" | "video" | "carousel" | "text"; campaignName: string; adSetName: string; spend: number; impressions: number; clicks: number; conversions: number; cpa: number; roas: number; ctr: number; }
 
 interface MetaViewData {
   accountName: string; spend: number; revenue?: number; impressions: number; clicks: number; conversions: number; roas: number; ctr: number; cpc: number; cpa: number;
@@ -17,6 +17,16 @@ interface MetaViewData {
 }
 
 type MetaSubTab = "overview" | "creatives";
+type SortKey = "spend" | "roas" | "ctr" | "cpa" | "conversions" | "clicks";
+
+const SORT_OPTIONS: { key: SortKey; label: string; ascending?: boolean }[] = [
+  { key: "spend", label: "Spend" },
+  { key: "roas", label: "ROAS" },
+  { key: "ctr", label: "CTR" },
+  { key: "cpa", label: "CPA", ascending: true },
+  { key: "conversions", label: "Conversions" },
+  { key: "clicks", label: "Clicks" },
+];
 
 function pctChange(current: number, previous?: number): number | undefined { if (previous === undefined || previous === 0) return undefined; return ((current - previous) / previous) * 100; }
 function fmt(n: number): string { return "$" + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
@@ -38,6 +48,13 @@ function CreativeCard({ creative }: { creative: MetaCreative }) {
             <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>No preview</span>
           </div>
         )}
+        {creative.format === "video" && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full" style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(4px)" }}>
+              <svg viewBox="0 0 24 24" fill="white" width="20" height="20"><path d="M8 5v14l11-7z" /></svg>
+            </div>
+          </div>
+        )}
       </div>
       <div className="p-3" style={{ background: "var(--bg-card)" }}>
         <p className="truncate text-xs font-medium" style={{ color: "var(--text-primary)" }}>{creative.name}</p>
@@ -48,6 +65,61 @@ function CreativeCard({ creative }: { creative: MetaCreative }) {
           <div><p className="text-xs" style={{ color: "var(--text-tertiary)" }}>CPA</p><p className="text-xs font-semibold font-mono" style={{ color: "var(--text-primary)" }}>{fmt(creative.cpa)}</p></div>
           <div><p className="text-xs" style={{ color: "var(--text-tertiary)" }}>CTR</p><p className="text-xs font-semibold font-mono" style={{ color: "var(--text-primary)" }}>{creative.ctr.toFixed(2)}%</p></div>
         </div>
+        {/* ROAS progress bar */}
+        <div className="mt-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>ROAS</p>
+            <p className="text-xs font-semibold font-mono" style={{ color: roasColor(creative.roas) }}>{creative.roas.toFixed(2)}x</p>
+          </div>
+          <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full" style={{ background: "var(--bg-tertiary)" }}>
+            <div
+              className="h-full rounded-full transition-all"
+              style={{
+                width: `${Math.min(creative.roas / 4 * 100, 100)}%`,
+                background: roasColor(creative.roas),
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SelectControl({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
+  return (
+    <div className="flex items-center gap-2">
+      <label className="text-xs font-medium whitespace-nowrap" style={{ color: "var(--text-tertiary)" }}>{label}</label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="rounded-lg px-2.5 py-1.5 text-xs font-medium outline-none transition-colors"
+        style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)", color: "var(--text-primary)" }}
+      >
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function NumberInput({ label, value, onChange, prefix, placeholder }: { label: string; value: number; onChange: (v: number) => void; prefix?: string; placeholder?: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <label className="text-xs font-medium whitespace-nowrap" style={{ color: "var(--text-tertiary)" }}>{label}</label>
+      <div className="relative">
+        {prefix && (
+          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs" style={{ color: "var(--text-tertiary)" }}>{prefix}</span>
+        )}
+        <input
+          type="number"
+          value={value || ""}
+          onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+          placeholder={placeholder ?? "0"}
+          className="w-20 rounded-lg py-1.5 text-xs font-medium outline-none transition-colors"
+          style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)", color: "var(--text-primary)", paddingLeft: prefix ? "1.25rem" : "0.625rem", paddingRight: "0.625rem" }}
+        />
       </div>
     </div>
   );
@@ -55,6 +127,10 @@ function CreativeCard({ creative }: { creative: MetaCreative }) {
 
 export function MetaView({ data }: { data?: MetaViewData }) {
   const [subTab, setSubTab] = useState<MetaSubTab>("overview");
+  const [sortBy, setSortBy] = useState<SortKey>("spend");
+  const [minSpend, setMinSpend] = useState(0);
+  const [minRoas, setMinRoas] = useState(0);
+  const [campaignFilter, setCampaignFilter] = useState("");
 
   if (!data) return null;
 
@@ -75,14 +151,44 @@ export function MetaView({ data }: { data?: MetaViewData }) {
 
   const hasCreatives = data.creatives.length > 0;
 
-  // Summary metrics for the creatives tab
-  const creativeTotalSpend = data.creatives.reduce((sum, c) => sum + c.spend, 0);
-  const creativeTotalConversions = data.creatives.reduce((sum, c) => sum + c.conversions, 0);
-  const creativeTotalClicks = data.creatives.reduce((sum, c) => sum + c.clicks, 0);
+  // Unique campaign names for filter dropdown
+  const campaignNames = useMemo(() => {
+    const names = new Set(data.creatives.map((c) => c.campaignName));
+    return Array.from(names).sort();
+  }, [data.creatives]);
+
+  // Filter + sort creatives
+  const filteredCreatives = useMemo(() => {
+    let result = [...data.creatives];
+
+    // Apply filters
+    if (minSpend > 0) result = result.filter((c) => c.spend >= minSpend);
+    if (minRoas > 0) result = result.filter((c) => c.roas >= minRoas);
+    if (campaignFilter) result = result.filter((c) => c.campaignName === campaignFilter);
+
+    // Apply sort
+    const sortOption = SORT_OPTIONS.find((o) => o.key === sortBy);
+    const ascending = sortOption?.ascending ?? false;
+    result.sort((a, b) => {
+      const aVal = a[sortBy];
+      const bVal = b[sortBy];
+      return ascending ? aVal - bVal : bVal - aVal;
+    });
+
+    return result;
+  }, [data.creatives, sortBy, minSpend, minRoas, campaignFilter]);
+
+  // Summary metrics for the creatives tab (based on filtered set)
+  const creativeTotalSpend = filteredCreatives.reduce((sum, c) => sum + c.spend, 0);
+  const creativeTotalConversions = filteredCreatives.reduce((sum, c) => sum + c.conversions, 0);
+  const creativeTotalClicks = filteredCreatives.reduce((sum, c) => sum + c.clicks, 0);
+
   const subTabs: { id: MetaSubTab; label: string; count?: number }[] = [
     { id: "overview", label: "Overview" },
     { id: "creatives", label: "Creatives", count: hasCreatives ? data.creatives.length : undefined },
   ];
+
+  const hasActiveFilters = minSpend > 0 || minRoas > 0 || campaignFilter !== "";
 
   return (
     <div className="space-y-6">
@@ -228,17 +334,66 @@ export function MetaView({ data }: { data?: MetaViewData }) {
                 <MetricCard label="Creatives Tracked" value={data.creatives.length.toString()} metricType="neutral" size="md" />
               </div>
 
+              {/* Sort & Filter toolbar */}
+              <div className="flex flex-wrap items-center gap-4 rounded-xl px-4 py-3" style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}>
+                <SelectControl
+                  label="Sort by"
+                  value={sortBy}
+                  onChange={(v) => setSortBy(v as SortKey)}
+                  options={SORT_OPTIONS.map((o) => ({ value: o.key, label: o.label + (o.ascending ? " (low first)" : "") }))}
+                />
+                <NumberInput label="Min Spend" value={minSpend} onChange={setMinSpend} prefix="$" placeholder="0" />
+                <NumberInput label="Min ROAS" value={minRoas} onChange={setMinRoas} placeholder="0" />
+                <SelectControl
+                  label="Campaign"
+                  value={campaignFilter}
+                  onChange={setCampaignFilter}
+                  options={[{ value: "", label: "All Campaigns" }, ...campaignNames.map((n) => ({ value: n, label: n.length > 30 ? n.slice(0, 30) + "..." : n }))]}
+                />
+                <div className="ml-auto flex items-center gap-2">
+                  {hasActiveFilters && (
+                    <button
+                      onClick={() => { setMinSpend(0); setMinRoas(0); setCampaignFilter(""); }}
+                      className="rounded-md px-2 py-1 text-xs font-medium transition-colors hover:opacity-80"
+                      style={{ color: "var(--accent-primary)" }}
+                    >
+                      Clear filters
+                    </button>
+                  )}
+                  <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
+                    {filteredCreatives.length} of {data.creatives.length} creatives
+                  </span>
+                </div>
+              </div>
+
               {/* Full creative grid */}
               <div className="overflow-hidden rounded-xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}>
                 <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--border-primary)" }}>
-                  <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>All Creatives</h3>
-                  <p className="mt-1 text-xs" style={{ color: "var(--text-tertiary)" }}>Sorted by spend, highest first</p>
+                  <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+                    {hasActiveFilters ? "Filtered Creatives" : "All Creatives"}
+                  </h3>
+                  <p className="mt-1 text-xs" style={{ color: "var(--text-tertiary)" }}>
+                    Sorted by {SORT_OPTIONS.find((o) => o.key === sortBy)?.label ?? sortBy}{SORT_OPTIONS.find((o) => o.key === sortBy)?.ascending ? ", lowest first" : ", highest first"}
+                  </p>
                 </div>
-                <div className="grid grid-cols-1 gap-4 p-6 min-[500px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {data.creatives.map((creative) => (
-                    <CreativeCard key={creative.id} creative={creative} />
-                  ))}
-                </div>
+                {filteredCreatives.length > 0 ? (
+                  <div className="grid grid-cols-1 gap-4 p-6 min-[500px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {filteredCreatives.map((creative) => (
+                      <CreativeCard key={creative.id} creative={creative} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <p className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>No creatives match filters</p>
+                    <button
+                      onClick={() => { setMinSpend(0); setMinRoas(0); setCampaignFilter(""); }}
+                      className="mt-2 text-xs font-medium transition-colors hover:opacity-80"
+                      style={{ color: "var(--accent-primary)" }}
+                    >
+                      Clear all filters
+                    </button>
+                  </div>
+                )}
               </div>
             </>
           ) : (
