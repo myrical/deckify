@@ -212,10 +212,13 @@ export default function ClientDetailPage() {
         }
       }
 
-      const mer = totalSpend > 0 ? totalRevenue / totalSpend : 0;
-      const roas = mer; // For blended view, ROAS = MER
+      // MER = Total Ad Spend / Total Revenue (as a percentage, lower is better)
+      const mer = totalRevenue > 0 ? (totalSpend / totalRevenue) * 100 : 0;
+      // Blended ROAS = Total Revenue / Total Ad Spend (as a ratio)
+      const roas = totalSpend > 0 ? totalRevenue / totalSpend : 0;
 
-      const prevMer = prevTotalSpend > 0 ? prevTotalRevenue / prevTotalSpend : 0;
+      const prevMer = prevTotalRevenue > 0 ? (prevTotalSpend / prevTotalRevenue) * 100 : 0;
+      const prevRoas = prevTotalSpend > 0 ? prevTotalRevenue / prevTotalSpend : 0;
 
       // Sort time series by date
       const timeSeries = [...tsMap.entries()]
@@ -229,7 +232,7 @@ export default function ClientDetailPage() {
         roas,
         platforms: allPlatforms,
         previousPeriod: hasPrev
-          ? { totalSpend: prevTotalSpend, totalRevenue: prevTotalRevenue, mer: prevMer, roas: prevMer }
+          ? { totalSpend: prevTotalSpend, totalRevenue: prevTotalRevenue, mer: prevMer, roas: prevRoas }
           : undefined,
         timeSeries,
       });

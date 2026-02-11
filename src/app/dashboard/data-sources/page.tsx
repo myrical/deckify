@@ -88,13 +88,17 @@ function AssignDropdown({
     const spaceBelow = window.innerHeight - rect.bottom;
     const dropdownWidth = 208;
     const dropdownHeight = 260;
-    const openUpward = spaceBelow < dropdownHeight;
+    // Bulk bar is at the bottom — always open upward
+    const openUpward = variant === "bulk" ? true : spaceBelow < dropdownHeight;
 
-    // Align right edge of dropdown to right edge of button;
-    // if that would go off-screen left, clamp to left: 8
-    let left = rect.right - dropdownWidth;
+    // Center dropdown on button for bulk variant, right-align for row variant
+    let left: number;
+    if (variant === "bulk") {
+      left = rect.left + rect.width / 2 - dropdownWidth / 2;
+    } else {
+      left = rect.right - dropdownWidth;
+    }
     if (left < 8) left = 8;
-    // If it would go off-screen right, clamp
     if (left + dropdownWidth > window.innerWidth - 8) {
       left = window.innerWidth - dropdownWidth - 8;
     }
@@ -108,7 +112,7 @@ function AssignDropdown({
       width: dropdownWidth,
       zIndex: 9999,
     });
-  }, [open]);
+  }, [open, variant]);
 
   const handleSelect = (clientId: string | null) => {
     onAssign(clientId);

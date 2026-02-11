@@ -10,7 +10,7 @@ import { TimeSeriesChart } from "./charts/time-series-chart";
 export interface AllPlatformsViewData {
   totalSpend: number;
   totalRevenue: number;
-  mer: number; // totalRevenue / totalSpend
+  mer: number; // (totalSpend / totalRevenue) * 100 — expressed as a percentage
   roas: number;
   platforms: {
     meta?: { spend: number; revenue: number; conversions: number; roas: number };
@@ -130,9 +130,9 @@ export function AllPlatformsView({ data }: { data?: AllPlatformsViewData }) {
       <div className="stagger-children grid grid-cols-2 gap-4 lg:grid-cols-4">
         <MetricCard
           label="MER"
-          value={data.mer > 0 ? data.mer.toFixed(2) + "x" : "--"}
+          value={data.mer > 0 ? data.mer.toFixed(1) + "%" : "--"}
           change={pctChange(data.mer, prev?.mer)}
-          metricType="positive-up"
+          metricType="negative-up"
           size="md"
         />
         <MetricCard
