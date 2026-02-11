@@ -371,7 +371,7 @@ export default function ClientDetailPage() {
       <div className="mb-6">
         <Link
           href="/dashboard/clients"
-          className="mb-3 inline-flex items-center gap-1.5 text-sm font-medium transition-colors"
+          className="btn-text mb-3 inline-flex items-center gap-1.5 text-sm font-medium"
           style={{ color: "var(--text-tertiary)" }}
         >
           <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
@@ -405,7 +405,7 @@ export default function ClientDetailPage() {
           )}
           <button
             onClick={() => { setEditingName(true); setEditName(client.name); }}
-            className="rounded-md p-1"
+            className="btn-icon rounded-md p-1"
             style={{ color: "var(--text-tertiary)" }}
             title="Rename"
           >
@@ -415,7 +415,7 @@ export default function ClientDetailPage() {
           </button>
           <button
             onClick={() => setShowDeleteConfirm(true)}
-            className="rounded-md p-1"
+            className="btn-icon rounded-md p-1"
             style={{ color: "var(--status-negative, #ef4444)" }}
             title="Delete client"
           >
@@ -445,14 +445,14 @@ export default function ClientDetailPage() {
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="rounded-lg px-4 py-2 text-sm font-medium"
+                className="btn-ghost rounded-lg px-4 py-2 text-sm font-medium"
                 style={{ color: "var(--text-secondary)", background: "var(--bg-secondary)" }}
               >
                 Cancel
               </button>
               <button
                 onClick={deleteClient}
-                className="rounded-lg px-4 py-2 text-sm font-medium text-white"
+                className="btn-solid rounded-lg px-4 py-2 text-sm font-medium text-white"
                 style={{ background: "var(--status-negative)" }}
               >
                 Delete
@@ -478,14 +478,14 @@ export default function ClientDetailPage() {
               <div className="flex justify-end gap-2">
                 <button
                   onClick={() => setUnassigningId(null)}
-                  className="rounded-lg px-4 py-2 text-sm font-medium"
+                  className="btn-ghost rounded-lg px-4 py-2 text-sm font-medium"
                   style={{ color: "var(--text-secondary)", background: "var(--bg-secondary)" }}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={() => unassignDataSource(unassigningId)}
-                  className="rounded-lg px-4 py-2 text-sm font-medium text-white"
+                  className="btn-solid rounded-lg px-4 py-2 text-sm font-medium text-white"
                   style={{ background: "var(--status-negative)" }}
                 >
                   Unassign
@@ -502,7 +502,7 @@ export default function ClientDetailPage() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className="rounded-md px-4 py-2 text-sm font-medium transition-all"
+            className={`rounded-md px-4 py-2 text-sm font-medium transition-all ${activeTab !== tab.id ? "btn-ghost" : ""}`}
             style={{
               background: activeTab === tab.id ? "var(--bg-card)" : "transparent",
               color: activeTab === tab.id
@@ -546,7 +546,7 @@ export default function ClientDetailPage() {
           </h2>
           <Link
             href={`/generate?clientId=${client.id}`}
-            className="rounded-lg px-4 py-2 text-sm font-medium text-white"
+            className="btn-solid rounded-lg px-4 py-2 text-sm font-medium text-white"
             style={{ background: "linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))" }}
           >
             Generate Deck
@@ -562,7 +562,7 @@ export default function ClientDetailPage() {
             </p>
             <Link
               href="/dashboard/data-sources"
-              className="mt-2 text-sm font-medium"
+              className="btn-text mt-2 text-sm font-medium"
               style={{ color: "var(--accent-primary)" }}
             >
               Assign data sources
@@ -624,7 +624,7 @@ export default function ClientDetailPage() {
                 ) : (
                   <button
                     onClick={() => setReassigningId(acc.id)}
-                    className="rounded-md px-2 py-1 text-xs font-medium"
+                    className="btn-ghost rounded-md px-2 py-1 text-xs font-medium"
                     style={{ color: "var(--text-tertiary)", background: "var(--bg-secondary)" }}
                     title="Reassign to another client"
                   >
@@ -633,7 +633,7 @@ export default function ClientDetailPage() {
                 )}
                 <button
                   onClick={() => setUnassigningId(acc.id)}
-                  className="rounded-md px-2 py-1 text-xs font-medium"
+                  className="btn-text rounded-md px-2 py-1 text-xs font-medium"
                   style={{ color: "var(--status-negative, #ef4444)" }}
                   title="Unassign from this client"
                 >

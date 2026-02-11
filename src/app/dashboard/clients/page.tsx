@@ -119,7 +119,7 @@ export default function ClientsPage() {
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="rounded-lg px-4 py-2 text-sm font-medium text-white"
+          className="btn-solid rounded-lg px-4 py-2 text-sm font-medium text-white"
           style={{ background: "var(--accent-primary)" }}
         >
           + Create Client
@@ -160,7 +160,7 @@ export default function ClientsPage() {
             </button>
             <button
               onClick={() => { setShowForm(false); setNewName(""); }}
-              className="rounded-lg px-3 py-2 text-sm font-medium"
+              className="btn-text rounded-lg px-3 py-2 text-sm font-medium"
               style={{ color: "var(--text-tertiary)" }}
             >
               Cancel
@@ -188,14 +188,14 @@ export default function ClientsPage() {
               <div className="flex justify-end gap-2">
                 <button
                   onClick={() => setDeletingId(null)}
-                  className="rounded-lg px-4 py-2 text-sm font-medium"
+                  className="btn-ghost rounded-lg px-4 py-2 text-sm font-medium"
                   style={{ color: "var(--text-secondary)", background: "var(--bg-secondary)" }}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={() => deleteClient(deletingId)}
-                  className="rounded-lg px-4 py-2 text-sm font-medium text-white"
+                  className="btn-solid rounded-lg px-4 py-2 text-sm font-medium text-white"
                   style={{ background: "var(--status-negative)" }}
                 >
                   Delete
@@ -219,7 +219,7 @@ export default function ClientsPage() {
           </p>
           <button
             onClick={() => setShowForm(true)}
-            className="text-sm font-medium"
+            className="btn-text text-sm font-medium"
             style={{ color: "var(--accent-primary)" }}
           >
             Create your first client
@@ -282,7 +282,7 @@ export default function ClientsPage() {
                         setEditingId(client.id);
                         setEditName(client.name);
                       }}
-                      className="rounded-md p-1 transition-colors hover:opacity-80"
+                      className="btn-icon rounded-md p-1"
                       style={{ color: "var(--text-tertiary)" }}
                       title="Rename"
                     >
@@ -296,7 +296,7 @@ export default function ClientsPage() {
                         e.preventDefault();
                         setDeletingId(client.id);
                       }}
-                      className="rounded-md p-1 transition-colors hover:opacity-80"
+                      className="btn-icon rounded-md p-1"
                       style={{ color: "var(--status-negative, #ef4444)" }}
                       title="Delete"
                     >

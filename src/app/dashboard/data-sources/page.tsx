@@ -397,6 +397,11 @@ export default function DataSourcesPage() {
       const json = await res.json();
       setAssignError(json.error ?? "This client already has an account on this platform.");
     }
+    // After assigning, clear search so user sees remaining unassigned sources
+    if (clientId && search) {
+      setSearch("");
+      setDebouncedSearch("");
+    }
     fetchData();
   };
 
@@ -413,6 +418,11 @@ export default function DataSourcesPage() {
       setAssignError(json.error ?? "Channel limit reached for this client.");
     }
     setSelected(new Set());
+    // After assigning, clear search so user sees remaining unassigned sources
+    if (clientId && search) {
+      setSearch("");
+      setDebouncedSearch("");
+    }
     fetchData();
   };
 
@@ -466,7 +476,7 @@ export default function DataSourcesPage() {
           </p>
           <button
             onClick={() => setShowBanner(false)}
-            className="text-sm font-medium"
+            className="btn-text text-sm font-medium"
             style={{ color: "var(--status-positive)" }}
           >
             Dismiss
@@ -522,7 +532,7 @@ export default function DataSourcesPage() {
             <button
               key={p}
               onClick={() => { setPlatformFilter(p); setPage(1); }}
-              className="rounded-md px-3 py-1.5 text-xs font-medium transition-all"
+              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${platformFilter !== p ? "btn-ghost" : ""}`}
               style={{
                 background: platformFilter === p ? "var(--bg-card)" : "transparent",
                 color: platformFilter === p
@@ -542,7 +552,7 @@ export default function DataSourcesPage() {
             <button
               key={s}
               onClick={() => { setStatusFilter(s); setPage(1); }}
-              className="rounded-md px-3 py-1.5 text-xs font-medium transition-all"
+              className={`rounded-md px-3 py-1.5 text-xs font-medium transition-all ${statusFilter !== s ? "btn-ghost" : ""}`}
               style={{
                 background: statusFilter === s ? "var(--bg-card)" : "transparent",
                 color: statusFilter === s ? "var(--text-primary)" : "var(--text-tertiary)",
@@ -604,7 +614,7 @@ export default function DataSourcesPage() {
           </p>
           <button
             onClick={() => setAssignError(null)}
-            className="text-sm font-medium"
+            className="btn-text text-sm font-medium"
             style={{ color: "var(--status-negative, #ef4444)" }}
           >
             Dismiss
@@ -688,7 +698,7 @@ export default function DataSourcesPage() {
             {statusFilter === "unassigned" && (
               <Link
                 href="/dashboard/connections"
-                className="mt-2 inline-block text-sm font-medium"
+                className="btn-text mt-2 inline-block text-sm font-medium"
                 style={{ color: "var(--accent-primary)" }}
               >
                 Connect a platform to discover accounts
@@ -763,7 +773,7 @@ export default function DataSourcesPage() {
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${page !== 1 ? "btn-ghost" : ""}`}
             style={{
               background: "var(--bg-card)",
               border: "1px solid var(--border-primary)",
@@ -779,7 +789,7 @@ export default function DataSourcesPage() {
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            className="rounded-lg px-3 py-1.5 text-xs font-medium transition-colors"
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${page !== totalPages ? "btn-ghost" : ""}`}
             style={{
               background: "var(--bg-card)",
               border: "1px solid var(--border-primary)",
@@ -818,7 +828,7 @@ export default function DataSourcesPage() {
           />
           <button
             onClick={() => setSelected(new Set())}
-            className="text-sm font-medium"
+            className="btn-text text-sm font-medium"
             style={{ color: "var(--text-tertiary)" }}
           >
             Clear

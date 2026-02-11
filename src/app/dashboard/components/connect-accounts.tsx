@@ -444,7 +444,7 @@ export function ConnectAccounts() {
                     <button
                       onClick={() => handleSync(platform.id)}
                       disabled={syncing === platform.id}
-                      className="rounded-lg px-3 py-1.5 text-xs font-medium transition-all hover:opacity-80"
+                      className="btn-solid rounded-lg px-3 py-1.5 text-xs font-medium transition-all"
                       style={{
                         background: platform.brandColor,
                         color: "#ffffff",
@@ -457,7 +457,7 @@ export function ConnectAccounts() {
                     <button
                       onClick={() => handleDisconnect(platform.id)}
                       disabled={disconnecting === platform.id}
-                      className="rounded-lg px-3 py-1.5 text-xs font-medium transition-all hover:opacity-80"
+                      className="btn-ghost rounded-lg px-3 py-1.5 text-xs font-medium transition-all"
                       style={{
                         background: "var(--bg-tertiary)",
                         color: "var(--text-secondary)",

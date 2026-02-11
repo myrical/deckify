@@ -97,7 +97,7 @@ export function Sidebar({ connectionCount, unassignedCount, connectedPlatforms }
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="mb-0.5 flex items-center gap-2.5 rounded-lg px-2 py-2 text-sm font-medium transition-all"
+                  className={`mb-0.5 flex items-center gap-2.5 rounded-lg px-2 py-2 text-sm font-medium transition-all ${!isActive ? "btn-nav" : ""}`}
                   style={{
                     color: isActive
                       ? "var(--accent-primary)"
@@ -127,7 +127,7 @@ export function Sidebar({ connectionCount, unassignedCount, connectedPlatforms }
       <div className="border-t px-3 py-3" style={{ borderColor: "var(--border-primary)" }}>
         <Link
           href="/generate"
-          className="mb-2 flex items-center gap-2.5 rounded-lg px-2 py-2 text-sm font-semibold text-white transition-all hover:opacity-90"
+          className="btn-solid mb-2 flex items-center gap-2.5 rounded-lg px-2 py-2 text-sm font-semibold text-white transition-all"
           style={{ background: "linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))" }}
         >
           <SidebarIcon type="deck" color="#fff" />

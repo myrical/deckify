@@ -190,3 +190,121 @@
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
+
+/* ─── Interactive Button Hover System ─────────────────────────────────────── */
+
+/* Text button — subtle glow + lift for plain text links/buttons */
+.btn-text {
+  position: relative;
+  transition: color 0.2s ease, transform 0.2s ease;
+  cursor: pointer;
+}
+.btn-text::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 100%;
+  height: 1.5px;
+  background: currentColor;
+  border-radius: 1px;
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease;
+  opacity: 0;
+}
+.btn-text:hover {
+  color: var(--accent-primary-hover, var(--accent-primary));
+  transform: translateY(-0.5px);
+}
+.btn-text:hover::after {
+  transform: scaleX(1);
+  opacity: 0.6;
+}
+.btn-text:active {
+  transform: translateY(0.5px);
+}
+
+/* Ghost pill — for filter toggles, tabs, and pill-style buttons */
+.btn-ghost {
+  position: relative;
+  transition: color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+  cursor: pointer;
+}
+.btn-ghost:hover {
+  background: var(--bg-tertiary) !important;
+  color: var(--text-primary) !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+.btn-ghost:active {
+  transform: scale(0.97);
+}
+
+/* Icon button — for icon-only action buttons (edit, delete, etc.) */
+.btn-icon {
+  position: relative;
+  border-radius: 8px;
+  transition: color 0.2s ease, background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+  cursor: pointer;
+}
+.btn-icon:hover {
+  background: var(--bg-tertiary);
+  transform: scale(1.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+.btn-icon:active {
+  transform: scale(0.95);
+}
+
+/* Solid button — for primary action buttons */
+.btn-solid {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  cursor: pointer;
+}
+.btn-solid::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 100%);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.btn-solid:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--accent-primary-glow);
+}
+.btn-solid:hover::before {
+  opacity: 1;
+}
+.btn-solid:active {
+  transform: translateY(0.5px);
+  box-shadow: none;
+}
+
+/* Nav item — for sidebar navigation links */
+.btn-nav {
+  position: relative;
+  transition: color 0.2s ease, background 0.2s ease, padding-left 0.2s ease;
+  cursor: pointer;
+}
+.btn-nav::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%) scaleY(0);
+  width: 3px;
+  height: 60%;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent-primary);
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.btn-nav:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+.btn-nav:hover::before {
+  transform: translateY(-50%) scaleY(1);
+}
