@@ -465,8 +465,46 @@ export default function DataSourcesPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-semibold" style={{ color: "var(--text-primary)" }}>Data Sources</h1>
         <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-          Search and assign your ad accounts to clients.
+          Assign discovered accounts to clients so analytics and decks are ready.
         </p>
+      </div>
+
+      <div className="mb-5 grid gap-3 md:grid-cols-3">
+        <Link
+          href="/dashboard/connections"
+          className="rounded-lg px-4 py-3 transition-colors hover:opacity-90"
+          style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}
+        >
+          <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+            Step 1
+          </p>
+          <p className="mt-1 text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+            Connect platforms
+          </p>
+        </Link>
+        <div
+          className="rounded-lg px-4 py-3"
+          style={{ background: "var(--accent-primary-light)", border: "1px solid var(--border-primary)" }}
+        >
+          <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+            Step 2
+          </p>
+          <p className="mt-1 text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+            Assign data sources
+          </p>
+        </div>
+        <Link
+          href="/dashboard/clients"
+          className="rounded-lg px-4 py-3 transition-colors hover:opacity-90"
+          style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}
+        >
+          <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+            Step 3
+          </p>
+          <p className="mt-1 text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+            View client analytics
+          </p>
+        </Link>
       </div>
 
       {/* Post-OAuth banner */}

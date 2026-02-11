@@ -125,6 +125,8 @@ export function AllPlatformsView({ data }: { data?: AllPlatformsViewData }) {
     });
   }
 
+  const breakdownCardCount = adPlatforms.length + (data.platforms.shopify ? 1 : 0);
+
   return (
     <div className="space-y-6">
       {/* KPI Cards */}
@@ -243,10 +245,10 @@ export function AllPlatformsView({ data }: { data?: AllPlatformsViewData }) {
       </div>
 
       {/* Platform Breakdown */}
-      {(adPlatforms.length > 0 || data.platforms.shopify) && (
+      {breakdownCardCount > 1 && (
         <div
           className="grid gap-4"
-          style={{ gridTemplateColumns: `repeat(${adPlatforms.length + (data.platforms.shopify ? 1 : 0)}, 1fr)` }}
+          style={{ gridTemplateColumns: `repeat(${breakdownCardCount}, 1fr)` }}
         >
           {adPlatforms.map((p) => (
             <div

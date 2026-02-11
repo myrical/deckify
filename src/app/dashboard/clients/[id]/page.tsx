@@ -86,15 +86,22 @@ export default function ClientDetailPage() {
   // Fetch client info
   const fetchClient = useCallback(async () => {
     try {
-      const clientRes = await fetch("/api/clients");
-      if (clientRes.ok) {
-        const json = await clientRes.json();
-        const allC = (json.clients ?? []) as ClientDetail[];
+      const [detailRes, clientsRes] = await Promise.all([
+        fetch(`/api/clients/${clientId}`),
+        fetch("/api/clients"),
+      ]);
+
+      if (detailRes.ok) {
+        const detailJson = await detailRes.json();
+        setClient((detailJson.client ?? null) as ClientDetail | null);
+      } else {
+        setClient(null);
+      }
+
+      if (clientsRes.ok) {
+        const clientsJson = await clientsRes.json();
+        const allC = (clientsJson.clients ?? []) as ClientDetail[];
         setAllClients(allC.map((c) => ({ id: c.id, name: c.name })));
-        const found = allC.find((c) => c.id === clientId);
-        if (found) {
-          setClient(found);
-        }
       }
     } catch {
       // silent
@@ -114,143 +121,23 @@ export default function ClientDetailPage() {
 
   // Fetch "All Platforms" aggregated data
   const fetchAllPlatforms = useCallback(async () => {
-    if (!clientId || platforms.length === 0) return;
+    if (!clientId) return;
     setAllPlatformsLoading(true);
     setAllPlatformsData(null);
 
     try {
-      // Fetch all connected platforms in parallel
       const dateParams = dateRange ? `&start=${dateRange.start}&end=${dateRange.end}` : "";
-      const fetches = platforms.map((p) =>
-        fetch(`/api/analytics?platform=${p}&clientId=${clientId}${dateParams}`)
-          .then((res) => (res.ok ? res.json() : null))
-          .catch(() => null)
-      );
-      const results = await Promise.all(fetches);
-
-      // Build a map: platform -> first summary
-      const platformData: Record<string, Record<string, unknown>> = {};
-      platforms.forEach((p, i) => {
-        const json = results[i];
-        if (json) {
-          const summaries = json.data ?? [];
-          if (summaries.length > 0) {
-            platformData[p] = summaries[0];
-          }
-        }
-      });
-
-      // Aggregate into AllPlatformsViewData
-      let totalSpend = 0;
-      let totalRevenue = 0;
-      let prevTotalSpend = 0;
-      let prevTotalRevenue = 0;
-      let hasPrev = false;
-
-      const allPlatforms: AllPlatformsViewData["platforms"] = {};
-
-      // Time series merge map: date -> { spend, revenue }
-      const tsMap = new Map<string, { spend: number; revenue: number }>();
-
-      // Process ad platforms (meta, google)
-      for (const p of ["meta", "google"] as const) {
-        const data = platformData[p];
-        if (!data) continue;
-        const metrics = data.metrics as Record<string, number> | undefined;
-        const prevMetrics = data.previousPeriodMetrics as Record<string, number> | undefined;
-        const timeSeries = (data.timeSeries ?? []) as Array<Record<string, unknown>>;
-
-        const spend = metrics?.spend ?? 0;
-        const revenue = metrics?.revenue ?? 0;
-        const conversions = metrics?.conversions ?? 0;
-        const roas = spend > 0 ? revenue / spend : 0;
-
-        allPlatforms[p] = { spend, revenue, conversions, roas };
-        totalSpend += spend;
-        totalRevenue += revenue;
-
-        if (prevMetrics) {
-          hasPrev = true;
-          prevTotalSpend += prevMetrics.spend ?? 0;
-          prevTotalRevenue += prevMetrics.revenue ?? 0;
-        }
-
-        // Merge time series
-        for (const ts of timeSeries) {
-          const date = ts.date as string;
-          const tsMetrics = ts.metrics as Record<string, number> | undefined;
-          const existing = tsMap.get(date) ?? { spend: 0, revenue: 0 };
-          existing.spend += tsMetrics?.spend ?? 0;
-          existing.revenue += tsMetrics?.revenue ?? 0;
-          tsMap.set(date, existing);
-        }
+      const res = await fetch(`/api/analytics?platform=all&clientId=${clientId}${dateParams}`);
+      if (res.ok) {
+        const json = await res.json();
+        setAllPlatformsData((json.data ?? null) as AllPlatformsViewData | null);
       }
-
-      // Process Shopify (e-commerce)
-      const shopifyData = platformData["shopify"];
-      if (shopifyData) {
-        const metrics = shopifyData.metrics as Record<string, number> | undefined;
-        const prevMetrics = shopifyData.previousPeriodMetrics as Record<string, number> | undefined;
-        const timeSeries = (shopifyData.timeSeries ?? []) as Array<Record<string, unknown>>;
-
-        const shopifyRevenue = metrics?.revenue ?? 0;
-        const shopifyOrders = metrics?.orders ?? 0;
-
-        allPlatforms.shopify = { revenue: shopifyRevenue, orders: shopifyOrders };
-
-        // Shopify revenue is the primary revenue source (replaces ad platform revenue for MER calc)
-        if (shopifyRevenue > 0) {
-          totalRevenue = shopifyRevenue;
-          if (prevMetrics) {
-            hasPrev = true;
-            prevTotalRevenue = prevMetrics.revenue ?? 0;
-          }
-        }
-
-        // Add Shopify revenue to time series
-        for (const ts of timeSeries) {
-          const date = ts.date as string;
-          const tsMetrics = ts.metrics as { revenue?: number } | undefined;
-          const existing = tsMap.get(date) ?? { spend: 0, revenue: 0 };
-          if (shopifyRevenue > 0) {
-            // Use Shopify revenue instead of ad platform revenue
-            existing.revenue = tsMetrics?.revenue ?? 0;
-          }
-          tsMap.set(date, existing);
-        }
-      }
-
-      // MER = Total Ad Spend / Total Revenue (as a percentage, lower is better)
-      const mer = totalRevenue > 0 ? (totalSpend / totalRevenue) * 100 : 0;
-      // Blended ROAS = Total Revenue / Total Ad Spend (as a ratio)
-      const roas = totalSpend > 0 ? totalRevenue / totalSpend : 0;
-
-      const prevMer = prevTotalRevenue > 0 ? (prevTotalSpend / prevTotalRevenue) * 100 : 0;
-      const prevRoas = prevTotalSpend > 0 ? prevTotalRevenue / prevTotalSpend : 0;
-
-      // Sort time series by date
-      const timeSeries = [...tsMap.entries()]
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([date, vals]) => ({ date, spend: vals.spend, revenue: vals.revenue }));
-
-      setAllPlatformsData({
-        totalSpend,
-        totalRevenue,
-        mer,
-        roas,
-        platforms: allPlatforms,
-        previousPeriod: hasPrev
-          ? { totalSpend: prevTotalSpend, totalRevenue: prevTotalRevenue, mer: prevMer, roas: prevRoas }
-          : undefined,
-        timeSeries,
-      });
     } catch {
       // silent
     } finally {
       setAllPlatformsLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clientId, platforms.join(","), dateRange]);
+  }, [clientId, dateRange]);
 
   useEffect(() => {
     if (activeTab === "all" && client) {

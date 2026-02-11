@@ -6,6 +6,7 @@ import {
   getMetaAnalytics,
   getGoogleAnalytics,
   getShopifyAnalytics,
+  getAllPlatformsAnalytics,
   getOverviewByClient,
 } from "@/lib/analytics";
 import type { DateRange } from "@/core/ad-platforms/types";
@@ -64,6 +65,11 @@ export async function GET(request: Request) {
     if (platform === "shopify") {
       const result = await getShopifyAnalytics(clientId, dateRange);
       return NextResponse.json(result);
+    }
+
+    if (platform === "all") {
+      const result = await getAllPlatformsAnalytics(clientId, dateRange);
+      return NextResponse.json({ data: result });
     }
 
     return NextResponse.json({ error: "Invalid platform" }, { status: 400 });

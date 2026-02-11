@@ -112,7 +112,7 @@ export default function ClientsPage() {
         <div>
           <h1 className="text-2xl font-semibold" style={{ color: "var(--text-primary)" }}>Clients</h1>
           <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-            Manage clients and view their analytics.
+            Create clients, assign data sources, and open analytics.
           </p>
         </div>
         <button
@@ -122,6 +122,44 @@ export default function ClientsPage() {
         >
           + Create Client
         </button>
+      </div>
+
+      <div className="mb-6 grid gap-3 md:grid-cols-3">
+        <Link
+          href="/dashboard/connections"
+          className="rounded-lg px-4 py-3 transition-colors hover:opacity-90"
+          style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}
+        >
+          <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+            Step 1
+          </p>
+          <p className="mt-1 text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+            Connect platforms
+          </p>
+        </Link>
+        <Link
+          href="/dashboard/data-sources"
+          className="rounded-lg px-4 py-3 transition-colors hover:opacity-90"
+          style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}
+        >
+          <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+            Step 2
+          </p>
+          <p className="mt-1 text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+            Assign data sources
+          </p>
+        </Link>
+        <div
+          className="rounded-lg px-4 py-3"
+          style={{ background: "var(--accent-primary-light)", border: "1px solid var(--border-primary)" }}
+        >
+          <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+            Step 3
+          </p>
+          <p className="mt-1 text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+            Open client analytics
+          </p>
+        </div>
       </div>
 
       {/* Inline create form */}
