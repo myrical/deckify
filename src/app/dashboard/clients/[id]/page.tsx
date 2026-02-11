@@ -45,6 +45,13 @@ const PLATFORM_LABELS: Record<string, string> = {
   shopify: "Shopify",
 };
 
+const PLATFORM_ICONS: Record<string, string> = {
+  all: "🌐",
+  meta: "📘",
+  google: "🔍",
+  shopify: "🛍️",
+};
+
 export default function ClientDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -382,53 +389,11 @@ export default function ClientDetailPage() {
           </svg>
           Back to Clients
         </Link>
-        <div className="flex items-center gap-3">
-          {editingName ? (
-            <input
-              type="text"
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") renameClient();
-                if (e.key === "Escape") setEditingName(false);
-              }}
-              onBlur={() => renameClient()}
-              autoFocus
-              className="rounded-md px-2 py-1 text-2xl font-bold outline-none"
-              style={{
-                background: "var(--bg-secondary)",
-                border: "1px solid var(--border-primary)",
-                color: "var(--text-primary)",
-              }}
-            />
-          ) : (
-            <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>
-              {client.name}
-            </h1>
-          )}
-          <button
-            onClick={() => { setEditingName(true); setEditName(client.name); }}
-            className="btn-icon rounded-md p-1"
-            style={{ color: "var(--text-tertiary)" }}
-            title="Rename"
-          >
-            <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
-              <path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" />
-            </svg>
-          </button>
-          <button
-            onClick={() => setShowDeleteConfirm(true)}
-            className="btn-icon rounded-md p-1"
-            style={{ color: "var(--status-negative, #ef4444)" }}
-            title="Delete client"
-          >
-            <svg viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
-              <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.519.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" />
-            </svg>
-          </button>
-        </div>
-        <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
-          {client.adAccounts.length} data source{client.adAccounts.length !== 1 ? "s" : ""} assigned
+        <h1 className="text-3xl font-extrabold tracking-tight" style={{ color: "var(--text-primary)" }}>
+          {client.name}
+        </h1>
+        <p className="mt-0.5 text-sm" style={{ color: "var(--text-tertiary)" }}>
+          Performance Dashboard
         </p>
       </div>
 
@@ -500,23 +465,35 @@ export default function ClientDetailPage() {
       })()}
 
       {/* Platform tabs */}
-      <div className="mb-6 flex gap-1 rounded-lg p-0.5" style={{ background: "var(--bg-secondary)" }}>
-        {availableTabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`rounded-md px-4 py-2 text-sm font-medium transition-all ${activeTab !== tab.id ? "btn-ghost" : ""}`}
-            style={{
-              background: activeTab === tab.id ? "var(--bg-card)" : "transparent",
-              color: activeTab === tab.id
-                ? (tab.color ?? "var(--accent-primary)")
-                : "var(--text-tertiary)",
-              boxShadow: activeTab === tab.id ? "var(--shadow-sm)" : "none",
-            }}
-          >
-            {tab.label}
-          </button>
-        ))}
+      <div className="mb-6 flex flex-wrap gap-2">
+        {availableTabs.map((tab) => {
+          const isActive = activeTab === tab.id;
+          const icon = PLATFORM_ICONS[tab.id] ?? "";
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className="flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-all"
+              style={{
+                background: isActive
+                  ? (tab.color ?? "var(--accent-primary)")
+                  : "var(--bg-card)",
+                color: isActive
+                  ? "#fff"
+                  : "var(--text-secondary)",
+                border: isActive
+                  ? "1.5px solid transparent"
+                  : "1.5px solid var(--border-primary)",
+                boxShadow: isActive
+                  ? `0 2px 8px ${(tab.color ?? "var(--accent-primary)")}40`
+                  : "none",
+              }}
+            >
+              <span className="text-sm">{icon}</span>
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Analytics view */}
@@ -681,7 +658,22 @@ function transformMetaData(s: Record<string, unknown>) {
         clicks: cm?.clicks ?? 0, conversions: cm?.conversions ?? 0, cpa: cm?.cpa ?? 0, roas: cm?.roas ?? 0, adSets: [],
       };
     }),
-    creatives: [],
+    creatives: ((s.creatives ?? []) as Array<Record<string, unknown>>).map((c) => {
+      const cm = c.metrics as Record<string, number> | undefined;
+      return {
+        id: c.id as string,
+        name: c.name as string,
+        thumbnailUrl: c.thumbnailUrl as string | undefined,
+        campaignName: c.campaignName as string,
+        adSetName: (c.adSetName as string) ?? "",
+        spend: cm?.spend ?? 0,
+        impressions: cm?.impressions ?? 0,
+        clicks: cm?.clicks ?? 0,
+        conversions: cm?.conversions ?? 0,
+        cpa: cm?.cpa ?? 0,
+        ctr: cm?.ctr ?? 0,
+      };
+    }),
     timeSeries: timeSeries.map((ts) => ({ date: ts.date as string, metrics: ts.metrics as Record<string, number> })),
     previousPeriod: prevMetrics
       ? { spend: prevMetrics.spend, conversions: prevMetrics.conversions, roas: prevMetrics.roas, cpa: prevMetrics.cpa }

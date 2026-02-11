@@ -1,6 +1,5 @@
 "use client";
 
-import { MetricCard } from "./metric-card";
 import { TimeSeriesChart } from "./charts/time-series-chart";
 
 /* ------------------------------------------------------------------ */
@@ -42,11 +41,15 @@ const PLATFORM_LABELS: Record<string, string> = {
   shopify: "Shopify",
 };
 
-function fmt(n: number): string {
-  return "$" + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function fmtCompact(n: number): string {
+  if (n >= 1_000_000) return "$" + (n / 1_000_000).toFixed(1) + "M";
+  if (n >= 1_000) return "$" + (n / 1_000).toFixed(0) + "K";
+  return "$" + n.toFixed(2);
 }
 
-function fmtWhole(n: number): string {
+function fmtCompactLg(n: number): string {
+  if (n >= 1_000_000) return "$" + (n / 1_000_000).toFixed(1) + "M";
+  if (n >= 1_000) return "$" + (n / 1_000).toFixed(0) + "K";
   return "$" + n.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 }
 
@@ -122,141 +125,209 @@ export function AllPlatformsView({ data }: { data?: AllPlatformsViewData }) {
     });
   }
 
-  const maxSpend = Math.max(...adPlatforms.map((p) => p.spend), 1);
-
   return (
     <div className="space-y-6">
       {/* KPI Cards */}
-      <div className="stagger-children grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <MetricCard
-          label="MER"
-          value={data.mer > 0 ? data.mer.toFixed(1) + "%" : "--"}
-          change={pctChange(data.mer, prev?.mer)}
-          metricType="negative-up"
-          size="md"
-        />
-        <MetricCard
-          label="ROAS"
-          value={data.roas > 0 ? data.roas.toFixed(2) + "x" : "--"}
-          change={pctChange(data.roas, prev?.roas)}
-          metricType="positive-up"
-          size="md"
-        />
-        <MetricCard
-          label="Total Revenue"
-          value={fmtWhole(data.totalRevenue)}
-          change={pctChange(data.totalRevenue, prev?.totalRevenue)}
-          metricType="positive-up"
-          size="md"
-        />
-        <MetricCard
-          label="Total Ad Spend"
-          value={fmtWhole(data.totalSpend)}
-          change={pctChange(data.totalSpend, prev?.totalSpend)}
-          metricType="neutral"
-          size="md"
-        />
+      <div
+        className="rounded-2xl p-6"
+        style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}
+      >
+        <h2 className="mb-5 text-base font-bold" style={{ color: "var(--text-primary)" }}>
+          Blended Performance
+        </h2>
+        <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
+          {/* MER */}
+          <div className="text-center">
+            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+              MER
+            </p>
+            <p
+              className="mt-1 text-4xl font-extrabold font-mono tracking-tight"
+              style={{ color: "var(--accent-primary)" }}
+            >
+              {data.mer > 0 ? data.mer.toFixed(1) + "%" : "--"}
+            </p>
+            {(() => {
+              const change = pctChange(data.mer, prev?.mer);
+              if (change === undefined) return null;
+              // MER: lower is better, so increase = negative sentiment
+              const isGood = change < 0;
+              return (
+                <p className="mt-1 text-xs font-semibold" style={{ color: isGood ? "var(--status-positive)" : "var(--status-negative)" }}>
+                  {change > 0 ? "▲" : "▼"} {change > 0 ? "+" : ""}{change.toFixed(1)}% vs prev
+                </p>
+              );
+            })()}
+            <p className="mt-1 text-[10px]" style={{ color: "var(--text-tertiary)" }}>
+              Spend ÷ Revenue
+            </p>
+          </div>
+
+          {/* ROAS */}
+          <div className="text-center">
+            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+              ROAS
+            </p>
+            <p
+              className="mt-1 text-4xl font-extrabold font-mono tracking-tight"
+              style={{ color: "var(--accent-secondary, #3b82f6)" }}
+            >
+              {data.roas > 0 ? data.roas.toFixed(2) + "x" : "--"}
+            </p>
+            {(() => {
+              const change = pctChange(data.roas, prev?.roas);
+              if (change === undefined) return null;
+              const isGood = change > 0;
+              return (
+                <p className="mt-1 text-xs font-semibold" style={{ color: isGood ? "var(--status-positive)" : "var(--status-negative)" }}>
+                  {change > 0 ? "▲" : "▼"} {change > 0 ? "+" : ""}{change.toFixed(1)}% vs prev
+                </p>
+              );
+            })()}
+            <p className="mt-1 text-[10px]" style={{ color: "var(--text-tertiary)" }}>
+              Revenue ÷ Spend
+            </p>
+          </div>
+
+          {/* Total Revenue */}
+          <div className="text-center">
+            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+              Total Revenue
+            </p>
+            <p
+              className="mt-1 text-4xl font-extrabold font-mono tracking-tight"
+              style={{ color: "var(--text-primary)" }}
+            >
+              {fmtCompactLg(data.totalRevenue)}
+            </p>
+            {(() => {
+              const change = pctChange(data.totalRevenue, prev?.totalRevenue);
+              if (change === undefined) return null;
+              const isGood = change > 0;
+              return (
+                <p className="mt-1 text-xs font-semibold" style={{ color: isGood ? "var(--status-positive)" : "var(--status-negative)" }}>
+                  {change > 0 ? "▲" : "▼"} {change > 0 ? "+" : ""}{change.toFixed(1)}% vs prev
+                </p>
+              );
+            })()}
+            <p className="mt-1 text-[10px]" style={{ color: "var(--text-tertiary)" }}>
+              {data.platforms.shopify ? "Shopify" : "Ad Platforms"}
+            </p>
+          </div>
+
+          {/* Total Ad Spend */}
+          <div className="text-center">
+            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+              Total Ad Spend
+            </p>
+            <p
+              className="mt-1 text-4xl font-extrabold font-mono tracking-tight"
+              style={{ color: "var(--text-primary)" }}
+            >
+              {fmtCompactLg(data.totalSpend)}
+            </p>
+            {(() => {
+              const change = pctChange(data.totalSpend, prev?.totalSpend);
+              if (change === undefined) return null;
+              return (
+                <p className="mt-1 text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>
+                  {change > 0 ? "▲" : "▼"} {change > 0 ? "+" : ""}{change.toFixed(1)}% vs prev
+                </p>
+              );
+            })()}
+            <p className="mt-1 text-[10px]" style={{ color: "var(--text-tertiary)" }}>
+              {[data.platforms.meta && "Meta", data.platforms.google && "Google"].filter(Boolean).join(" + ")}
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Platform Breakdown */}
       {(adPlatforms.length > 0 || data.platforms.shopify) && (
         <div
-          className="overflow-hidden rounded-xl"
-          style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}
+          className="grid gap-4"
+          style={{ gridTemplateColumns: `repeat(${adPlatforms.length + (data.platforms.shopify ? 1 : 0)}, 1fr)` }}
         >
-          <div
-            className="px-6 py-4"
-            style={{ borderBottom: "1px solid var(--border-primary)" }}
-          >
-            <h3
-              className="text-sm font-semibold uppercase tracking-wider"
-              style={{ color: "var(--text-tertiary)" }}
+          {adPlatforms.map((p) => (
+            <div
+              key={p.key}
+              className="rounded-xl p-4 transition-all duration-200 hover:-translate-y-0.5"
+              style={{
+                background: "var(--bg-card)",
+                border: "1px solid var(--border-primary)",
+                borderTop: `3px solid ${PLATFORM_COLORS[p.key] ?? "var(--accent-primary)"}`,
+              }}
             >
-              Platform Breakdown
-            </h3>
-          </div>
-          <div className="divide-y" style={{ borderColor: "var(--border-primary)" }}>
-            {adPlatforms.map((p) => (
-              <div key={p.key} className="flex items-center gap-4 px-6 py-4">
+              <div className="mb-3 flex items-center gap-2">
                 <PlatformIcon platform={p.key} />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                    {p.label}
-                  </p>
-                  <div className="mt-1.5 flex items-center gap-4">
-                    <div>
-                      <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>Spend </span>
-                      <span className="text-xs font-medium font-mono" style={{ color: "var(--text-primary)" }}>
-                        {fmt(p.spend)}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>Revenue </span>
-                      <span className="text-xs font-medium font-mono" style={{ color: "var(--text-primary)" }}>
-                        {fmt(p.revenue)}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>ROAS </span>
-                      <span
-                        className="text-xs font-bold font-mono"
-                        style={{ color: p.roas >= 2 ? "var(--status-positive)" : p.roas >= 1 ? "var(--status-warning, #f59e0b)" : "var(--status-negative)" }}
-                      >
-                        {p.roas.toFixed(2)}x
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>Conv. </span>
-                      <span className="text-xs font-medium font-mono" style={{ color: "var(--text-primary)" }}>
-                        {p.conversions.toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
+                <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                  {p.label}
+                </span>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>Spend</span>
+                  <span className="text-sm font-bold font-mono" style={{ color: "var(--text-primary)" }}>
+                    {fmtCompact(p.spend)}
+                  </span>
                 </div>
-                {/* Spend bar */}
-                <div className="hidden w-32 sm:block">
-                  <div
-                    className="h-2 rounded-full"
-                    style={{ background: "var(--bg-tertiary, var(--bg-secondary))" }}
+                <div className="flex items-baseline justify-between">
+                  <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>Revenue</span>
+                  <span className="text-sm font-bold font-mono" style={{ color: "var(--text-primary)" }}>
+                    {fmtCompact(p.revenue)}
+                  </span>
+                </div>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>ROAS</span>
+                  <span
+                    className="text-sm font-bold font-mono"
+                    style={{ color: p.roas >= 2 ? "var(--status-positive)" : p.roas >= 1 ? "var(--status-warning, #f59e0b)" : "var(--status-negative)" }}
                   >
-                    <div
-                      className="h-2 rounded-full transition-all"
-                      style={{
-                        width: `${Math.min((p.spend / maxSpend) * 100, 100)}%`,
-                        background: PLATFORM_COLORS[p.key] ?? "var(--accent-primary)",
-                      }}
-                    />
-                  </div>
+                    {p.roas.toFixed(2)}x
+                  </span>
+                </div>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>Conv.</span>
+                  <span className="text-sm font-bold font-mono" style={{ color: "var(--text-primary)" }}>
+                    {p.conversions.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  </span>
                 </div>
               </div>
-            ))}
+            </div>
+          ))}
 
-            {/* Shopify row (e-commerce, not an ad platform) */}
-            {data.platforms.shopify && (
-              <div className="flex items-center gap-4 px-6 py-4">
+          {/* Shopify card */}
+          {data.platforms.shopify && (
+            <div
+              className="rounded-xl p-4 transition-all duration-200 hover:-translate-y-0.5"
+              style={{
+                background: "var(--bg-card)",
+                border: "1px solid var(--border-primary)",
+                borderTop: `3px solid ${PLATFORM_COLORS.shopify}`,
+              }}
+            >
+              <div className="mb-3 flex items-center gap-2">
                 <PlatformIcon platform="shopify" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
-                    {PLATFORM_LABELS.shopify}
-                  </p>
-                  <div className="mt-1.5 flex items-center gap-4">
-                    <div>
-                      <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>Revenue </span>
-                      <span className="text-xs font-medium font-mono" style={{ color: "var(--text-primary)" }}>
-                        {fmt(data.platforms.shopify.revenue)}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>Orders </span>
-                      <span className="text-xs font-medium font-mono" style={{ color: "var(--text-primary)" }}>
-                        {data.platforms.shopify.orders.toLocaleString()}
-                      </span>
-                    </div>
-                  </div>
+                <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                  {PLATFORM_LABELS.shopify}
+                </span>
+              </div>
+              <div className="space-y-2">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>Revenue</span>
+                  <span className="text-sm font-bold font-mono" style={{ color: "var(--text-primary)" }}>
+                    {fmtCompact(data.platforms.shopify.revenue)}
+                  </span>
+                </div>
+                <div className="flex items-baseline justify-between">
+                  <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>Orders</span>
+                  <span className="text-sm font-bold font-mono" style={{ color: "var(--text-primary)" }}>
+                    {data.platforms.shopify.orders.toLocaleString()}
+                  </span>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
