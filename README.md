@@ -16,6 +16,24 @@ Prism is a marketing intelligence hub for marketers who need to create professio
 - **Saved Presets** — Label and reuse your favorite configurations per client
 - **Just-in-Time Auth** — Connect services exactly when you need them, not upfront
 
+## Local Development (Vercel Env)
+
+This project expects environment variables in `.env.local`. Pull them directly from Vercel:
+
+```bash
+npm install
+npm run vercel:login    # one-time, unless already authenticated
+npm run vercel:link     # one-time per local clone
+npm run env:pull
+npm run dev
+```
+
+If you need preview values instead of production values:
+
+```bash
+npm run env:pull:preview
+```
+
 ## How It Works
 
 1. **Connect** — Link your Meta or Google Ads account via OAuth
