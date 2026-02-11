@@ -69,7 +69,8 @@ export interface ClientOverview {
 }
 
 const ACCOUNT_FETCH_CONCURRENCY = 4;
-const ACCOUNT_FETCH_TIMEOUT_MS = 12000;
+const ACCOUNT_FETCH_TIMEOUT_MS = 30000;
+const ACCOUNT_FETCH_TIMEOUT_RETRIES = 1;
 
 async function withTimeout<T>(promise: Promise<T>, ms: number, timeoutMessage: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -82,6 +83,34 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, timeoutMessage: s
     ]);
   } finally {
     if (timer) clearTimeout(timer);
+  }
+}
+
+function isTimeoutError(err: unknown): boolean {
+  return err instanceof Error && err.message.toLowerCase().includes("timed out");
+}
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function withTimeoutRetry<T>(
+  task: () => Promise<T>,
+  ms: number,
+  timeoutMessage: string,
+  retries: number = ACCOUNT_FETCH_TIMEOUT_RETRIES,
+): Promise<T> {
+  let attempts = 0;
+  while (true) {
+    attempts += 1;
+    try {
+      return await withTimeout(task(), ms, timeoutMessage);
+    } catch (err) {
+      if (!isTimeoutError(err) || attempts > retries + 1) {
+        throw err;
+      }
+      await sleep(250);
+    }
   }
 }
 
@@ -170,8 +199,8 @@ export async function getOverviewByClient(orgId: string): Promise<ClientOverview
         ACCOUNT_FETCH_CONCURRENCY,
         async (acc) => {
           const connector = new MetaAdsConnector();
-          return await withTimeout(
-            connector.fetchAccountSummary({
+          return await withTimeoutRetry(
+            () => connector.fetchAccountSummary({
               accountId: acc.platformId,
               tokenSet: {
                 accessToken: acc.platformAuth.accessToken,
@@ -219,8 +248,8 @@ export async function getOverviewByClient(orgId: string): Promise<ClientOverview
           const connector = new GoogleAdsConnector();
           const managerMap = (acc.platformAuth.platformMeta as { managerMap?: Record<string, string> })?.managerMap;
           const loginCustomerId = managerMap?.[acc.platformId];
-          return await withTimeout(
-            connector.fetchAccountSummary({
+          return await withTimeoutRetry(
+            () => connector.fetchAccountSummary({
               accountId: acc.platformId,
               tokenSet: {
                 accessToken: acc.platformAuth.accessToken,
@@ -268,8 +297,8 @@ export async function getOverviewByClient(orgId: string): Promise<ClientOverview
         async (acc) => {
           const connector = new ShopifyConnector();
           const shop = (acc.platformAuth.platformMeta as { shop?: string })?.shop ?? acc.platformId;
-          return await withTimeout(
-            connector.fetchEcommerceSummary(
+          return await withTimeoutRetry(
+            () => connector.fetchEcommerceSummary(
               shop,
               {
                 accessToken: acc.platformAuth.accessToken,
@@ -324,8 +353,8 @@ export async function getMetaAnalytics(
     ACCOUNT_FETCH_CONCURRENCY,
     async (acc) => {
       const connector = new MetaAdsConnector();
-      return await withTimeout(
-        connector.fetchAccountSummary({
+      return await withTimeoutRetry(
+        () => connector.fetchAccountSummary({
           accountId: acc.platformId,
           tokenSet: {
             accessToken: acc.platformAuth.accessToken,
@@ -375,8 +404,8 @@ export async function getGoogleAnalytics(
       const connector = new GoogleAdsConnector();
       const managerMap = (acc.platformAuth.platformMeta as { managerMap?: Record<string, string> })?.managerMap;
       const loginCustomerId = managerMap?.[acc.platformId];
-      return await withTimeout(
-        connector.fetchAccountSummary({
+      return await withTimeoutRetry(
+        () => connector.fetchAccountSummary({
           accountId: acc.platformId,
           tokenSet: {
             accessToken: acc.platformAuth.accessToken,
@@ -426,8 +455,8 @@ export async function getShopifyAnalytics(
     async (acc) => {
       const connector = new ShopifyConnector();
       const shop = (acc.platformAuth.platformMeta as { shop?: string })?.shop ?? acc.platformId;
-      return await withTimeout(
-        connector.fetchEcommerceSummary(
+      return await withTimeoutRetry(
+        () => connector.fetchEcommerceSummary(
           shop,
           {
             accessToken: acc.platformAuth.accessToken,
