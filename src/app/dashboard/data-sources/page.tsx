@@ -463,7 +463,7 @@ export default function DataSourcesPage() {
     <div className="p-6">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold" style={{ color: "var(--text-primary)" }}>Data Sources</h1>
+        <h1 className="text-2xl font-semibold" style={{ color: "var(--text-primary)" }}>Data Sources</h1>
         <p className="mt-1 text-sm" style={{ color: "var(--text-secondary)" }}>
           Search and assign your ad accounts to clients.
         </p>

@@ -132,7 +132,7 @@ export function TimeSeriesChart({ data, metrics, height = 280 }: TimeSeriesChart
         <CartesianGrid strokeDasharray="3 3" stroke="var(--border-secondary)" vertical={false} />
         <XAxis
           dataKey="date"
-          tick={{ fill: "var(--text-tertiary)", fontSize: 11 }}
+          tick={{ fill: "var(--text-tertiary)", fontSize: 12 }}
           tickFormatter={fmtDate}
           interval="preserveStartEnd"
           axisLine={{ stroke: "var(--border-secondary)" }}
@@ -140,7 +140,7 @@ export function TimeSeriesChart({ data, metrics, height = 280 }: TimeSeriesChart
         />
         <YAxis
           yAxisId="left"
-          tick={{ fill: "var(--text-tertiary)", fontSize: 11 }}
+          tick={{ fill: "var(--text-tertiary)", fontSize: 12 }}
           tickFormatter={leftIsCurrency ? fmtCurrency : fmtNumber}
           axisLine={false}
           tickLine={false}
@@ -149,7 +149,7 @@ export function TimeSeriesChart({ data, metrics, height = 280 }: TimeSeriesChart
           <YAxis
             yAxisId="right"
             orientation="right"
-            tick={{ fill: "var(--text-tertiary)", fontSize: 11 }}
+            tick={{ fill: "var(--text-tertiary)", fontSize: 12 }}
             tickFormatter={fmtNumber}
             axisLine={false}
             tickLine={false}
@@ -182,7 +182,7 @@ export function TimeSeriesChart({ data, metrics, height = 280 }: TimeSeriesChart
                 fill={`url(#gradient-${m.key})`}
                 yAxisId={yAxisId}
                 type="monotone"
-                strokeWidth={2}
+                strokeWidth={1.5}
               />
             );
           }
@@ -194,7 +194,7 @@ export function TimeSeriesChart({ data, metrics, height = 280 }: TimeSeriesChart
               stroke={m.color}
               yAxisId={yAxisId}
               type="monotone"
-              strokeWidth={2}
+              strokeWidth={1.5}
               dot={{ r: 3, fill: m.color }}
               activeDot={{ r: 5 }}
             />

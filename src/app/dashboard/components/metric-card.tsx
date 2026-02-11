@@ -54,13 +54,13 @@ export function MetricCard({ label, value, change, trend, size = "md", metricTyp
       />
 
       <p
-        className="text-xs font-semibold uppercase tracking-wider"
+        className="text-xs font-medium uppercase tracking-wider"
         style={{ color: "var(--text-tertiary)" }}
       >
         {label}
       </p>
       <p
-        className={`mt-1.5 font-bold font-mono ${
+        className={`mt-1.5 font-semibold font-mono ${
           size === "lg" ? "text-3xl" : size === "md" ? "text-2xl" : "text-xl"
         }`}
         style={{ color: "var(--text-primary)" }}

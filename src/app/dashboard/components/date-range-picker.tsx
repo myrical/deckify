@@ -126,7 +126,7 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
         >
           {/* Presets */}
           <div className="px-3 py-3" style={{ borderBottom: "1px solid var(--border-secondary)" }}>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Quick select</p>
+            <p className="mb-2 text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Quick select</p>
             <div className="flex flex-wrap gap-1.5">
               {presets.map((preset) => (
                 <button
@@ -146,7 +146,7 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
 
           {/* Custom range inputs */}
           <div className="px-3 py-3">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Custom range</p>
+            <p className="mb-2 text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Custom range</p>
             <div className="flex items-center gap-2">
               <input
                 type="date"

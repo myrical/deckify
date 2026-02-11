@@ -60,16 +60,16 @@ function CreativeCard({ creative }: { creative: MetaCreative }) {
         <p className="truncate text-xs font-medium" style={{ color: "var(--text-primary)" }}>{creative.name}</p>
         <p className="truncate text-xs" style={{ color: "var(--text-tertiary)" }}>{creative.campaignName} &rsaquo; {creative.adSetName}</p>
         <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1">
-          <div><p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Spend</p><p className="text-xs font-semibold font-mono" style={{ color: "var(--text-primary)" }}>{fmt(creative.spend)}</p></div>
-          <div><p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Conv.</p><p className="text-xs font-semibold font-mono" style={{ color: "var(--text-primary)" }}>{creative.conversions}</p></div>
-          <div><p className="text-xs" style={{ color: "var(--text-tertiary)" }}>CPA</p><p className="text-xs font-semibold font-mono" style={{ color: "var(--text-primary)" }}>{fmt(creative.cpa)}</p></div>
-          <div><p className="text-xs" style={{ color: "var(--text-tertiary)" }}>CTR</p><p className="text-xs font-semibold font-mono" style={{ color: "var(--text-primary)" }}>{creative.ctr.toFixed(2)}%</p></div>
+          <div><p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Spend</p><p className="text-xs font-medium font-mono" style={{ color: "var(--text-primary)" }}>{fmt(creative.spend)}</p></div>
+          <div><p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Conv.</p><p className="text-xs font-medium font-mono" style={{ color: "var(--text-primary)" }}>{creative.conversions}</p></div>
+          <div><p className="text-xs" style={{ color: "var(--text-tertiary)" }}>CPA</p><p className="text-xs font-medium font-mono" style={{ color: "var(--text-primary)" }}>{fmt(creative.cpa)}</p></div>
+          <div><p className="text-xs" style={{ color: "var(--text-tertiary)" }}>CTR</p><p className="text-xs font-medium font-mono" style={{ color: "var(--text-primary)" }}>{creative.ctr.toFixed(2)}%</p></div>
         </div>
         {/* ROAS progress bar */}
         <div className="mt-2">
           <div className="flex items-center justify-between">
             <p className="text-xs" style={{ color: "var(--text-tertiary)" }}>ROAS</p>
-            <p className="text-xs font-semibold font-mono" style={{ color: roasColor(creative.roas) }}>{creative.roas.toFixed(2)}x</p>
+            <p className="text-xs font-medium font-mono" style={{ color: roasColor(creative.roas) }}>{creative.roas.toFixed(2)}x</p>
           </div>
           <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full" style={{ background: "var(--bg-tertiary)" }}>
             <div
@@ -237,7 +237,7 @@ export function MetaView({ data }: { data?: MetaViewData }) {
           {timeSeriesData.length > 0 && (
             <div className="overflow-hidden rounded-xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}>
               <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--border-primary)" }}>
-                <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Daily Performance</h3>
+                <h3 className="text-sm font-medium uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Daily Performance</h3>
               </div>
               <div className="p-6">
                 <TimeSeriesChart
@@ -255,7 +255,7 @@ export function MetaView({ data }: { data?: MetaViewData }) {
           {data.campaigns.length >= 2 && (
             <div className="overflow-hidden rounded-xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}>
               <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--border-primary)" }}>
-                <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Campaign Performance</h3>
+                <h3 className="text-sm font-medium uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Campaign Performance</h3>
               </div>
               <div className="p-6">
                 <CampaignChart data={campaignChartData} />
@@ -267,19 +267,19 @@ export function MetaView({ data }: { data?: MetaViewData }) {
           {data.campaigns.length > 0 && (
             <div className="overflow-hidden rounded-xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}>
               <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--border-primary)" }}>
-                <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Campaigns</h3>
+                <h3 className="text-sm font-medium uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Campaigns</h3>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr style={{ background: "var(--bg-secondary)" }}>
-                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Campaign</th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Status</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Spend</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Revenue</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Conv.</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>CPA</th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>ROAS</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Campaign</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Status</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Spend</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Revenue</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Conv.</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>CPA</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>ROAS</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -288,7 +288,7 @@ export function MetaView({ data }: { data?: MetaViewData }) {
                         <td className="px-6 py-3 font-medium" style={{ color: "var(--text-primary)" }}>{campaign.name}</td>
                         <td className="px-4 py-3"><span className="inline-block rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: campaign.status === "active" ? "var(--status-positive-light)" : "var(--bg-tertiary)", color: campaign.status === "active" ? "var(--status-positive)" : "var(--text-tertiary)" }}>{campaign.status}</span></td>
                         <td className="px-4 py-3 text-right" style={{ color: "var(--text-primary)" }}>{fmt(campaign.spend)}</td>
-                        <td className="px-4 py-3 text-right font-semibold" style={{ color: "var(--accent-primary)" }}>{fmt(campaign.revenue ?? 0)}</td>
+                        <td className="px-4 py-3 text-right font-medium" style={{ color: "var(--accent-primary)" }}>{fmt(campaign.revenue ?? 0)}</td>
                         <td className="px-4 py-3 text-right" style={{ color: "var(--text-primary)" }}>{campaign.conversions.toLocaleString()}</td>
                         <td className="px-4 py-3 text-right" style={{ color: "var(--text-primary)" }}>{fmt(campaign.cpa)}</td>
                         <td className="px-4 py-3 text-right font-medium" style={{ color: roasColor(campaign.roas) }}>{campaign.roas.toFixed(2)}x</td>
@@ -304,7 +304,7 @@ export function MetaView({ data }: { data?: MetaViewData }) {
           {hasCreatives && (
             <div className="overflow-hidden rounded-xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}>
               <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid var(--border-primary)" }}>
-                <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Top Creatives</h3>
+                <h3 className="text-sm font-medium uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Top Creatives</h3>
                 <button
                   onClick={() => setSubTab("creatives")}
                   className="text-xs font-medium transition-colors hover:opacity-80"
@@ -369,7 +369,7 @@ export function MetaView({ data }: { data?: MetaViewData }) {
               {/* Full creative grid */}
               <div className="overflow-hidden rounded-xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}>
                 <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--border-primary)" }}>
-                  <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+                  <h3 className="text-sm font-medium uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
                     {hasActiveFilters ? "Filtered Creatives" : "All Creatives"}
                   </h3>
                   <p className="mt-1 text-xs" style={{ color: "var(--text-tertiary)" }}>

@@ -397,7 +397,7 @@ export default function ClientDetailPage() {
         </Link>
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight" style={{ color: "var(--text-primary)" }}>
+            <h1 className="text-2xl font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
               {client.name}
             </h1>
             <p className="mt-0.5 text-sm" style={{ color: "var(--text-tertiary)" }}>
@@ -484,7 +484,7 @@ export default function ClientDetailPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className="flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold transition-all"
+              className="flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-all"
               style={{
                 background: isActive
                   ? (tab.color ?? "var(--accent-primary)")
@@ -532,7 +532,7 @@ export default function ClientDetailPage() {
       {/* Data sources list */}
       <div className="mt-8">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+          <h2 className="text-sm font-medium uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
             Assigned Data Sources
           </h2>
           <Link
@@ -568,7 +568,7 @@ export default function ClientDetailPage() {
                 style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}
               >
                 <span
-                  className="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold text-white"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-semibold text-white"
                   style={{ background: PLATFORM_COLORS[acc.platform] ?? "#666" }}
                 >
                   {acc.platform.charAt(0).toUpperCase()}

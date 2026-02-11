@@ -66,7 +66,7 @@ function PlatformIcon({ platform }: { platform: string }) {
   const color = PLATFORM_COLORS[platform] ?? "var(--text-tertiary)";
   return (
     <span
-      className="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold text-white"
+      className="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-semibold text-white"
       style={{ background: color }}
     >
       {platform.charAt(0).toUpperCase()}
@@ -132,17 +132,17 @@ export function AllPlatformsView({ data }: { data?: AllPlatformsViewData }) {
         className="rounded-2xl p-6"
         style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}
       >
-        <h2 className="mb-5 text-base font-bold" style={{ color: "var(--text-primary)" }}>
+        <h2 className="mb-5 text-base font-semibold" style={{ color: "var(--text-primary)" }}>
           Blended Performance
         </h2>
         <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
           {/* MER */}
           <div className="text-center">
-            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+            <p className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
               MER
             </p>
             <p
-              className="mt-1 text-4xl font-extrabold font-mono tracking-tight"
+              className="mt-1 text-3xl font-semibold font-mono tracking-tight"
               style={{ color: "var(--accent-primary)" }}
             >
               {data.mer > 0 ? data.mer.toFixed(1) + "%" : "--"}
@@ -153,23 +153,23 @@ export function AllPlatformsView({ data }: { data?: AllPlatformsViewData }) {
               // MER: lower is better, so increase = negative sentiment
               const isGood = change < 0;
               return (
-                <p className="mt-1 text-xs font-semibold" style={{ color: isGood ? "var(--status-positive)" : "var(--status-negative)" }}>
+                <p className="mt-1 text-xs font-medium" style={{ color: isGood ? "var(--status-positive)" : "var(--status-negative)" }}>
                   {change > 0 ? "▲" : "▼"} {change > 0 ? "+" : ""}{change.toFixed(1)}% vs prev
                 </p>
               );
             })()}
-            <p className="mt-1 text-[10px]" style={{ color: "var(--text-tertiary)" }}>
+            <p className="mt-1 text-[11px]" style={{ color: "var(--text-tertiary)" }}>
               Spend ÷ Revenue
             </p>
           </div>
 
           {/* ROAS */}
           <div className="text-center">
-            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+            <p className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
               ROAS
             </p>
             <p
-              className="mt-1 text-4xl font-extrabold font-mono tracking-tight"
+              className="mt-1 text-3xl font-semibold font-mono tracking-tight"
               style={{ color: "var(--accent-secondary, #3b82f6)" }}
             >
               {data.roas > 0 ? data.roas.toFixed(2) + "x" : "--"}
@@ -179,23 +179,23 @@ export function AllPlatformsView({ data }: { data?: AllPlatformsViewData }) {
               if (change === undefined) return null;
               const isGood = change > 0;
               return (
-                <p className="mt-1 text-xs font-semibold" style={{ color: isGood ? "var(--status-positive)" : "var(--status-negative)" }}>
+                <p className="mt-1 text-xs font-medium" style={{ color: isGood ? "var(--status-positive)" : "var(--status-negative)" }}>
                   {change > 0 ? "▲" : "▼"} {change > 0 ? "+" : ""}{change.toFixed(1)}% vs prev
                 </p>
               );
             })()}
-            <p className="mt-1 text-[10px]" style={{ color: "var(--text-tertiary)" }}>
+            <p className="mt-1 text-[11px]" style={{ color: "var(--text-tertiary)" }}>
               Revenue ÷ Spend
             </p>
           </div>
 
           {/* Total Revenue */}
           <div className="text-center">
-            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+            <p className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
               Total Revenue
             </p>
             <p
-              className="mt-1 text-4xl font-extrabold font-mono tracking-tight"
+              className="mt-1 text-3xl font-semibold font-mono tracking-tight"
               style={{ color: "var(--text-primary)" }}
             >
               {fmtCompactLg(data.totalRevenue)}
@@ -205,23 +205,23 @@ export function AllPlatformsView({ data }: { data?: AllPlatformsViewData }) {
               if (change === undefined) return null;
               const isGood = change > 0;
               return (
-                <p className="mt-1 text-xs font-semibold" style={{ color: isGood ? "var(--status-positive)" : "var(--status-negative)" }}>
+                <p className="mt-1 text-xs font-medium" style={{ color: isGood ? "var(--status-positive)" : "var(--status-negative)" }}>
                   {change > 0 ? "▲" : "▼"} {change > 0 ? "+" : ""}{change.toFixed(1)}% vs prev
                 </p>
               );
             })()}
-            <p className="mt-1 text-[10px]" style={{ color: "var(--text-tertiary)" }}>
+            <p className="mt-1 text-[11px]" style={{ color: "var(--text-tertiary)" }}>
               {data.platforms.shopify ? "Shopify" : "Ad Platforms"}
             </p>
           </div>
 
           {/* Total Ad Spend */}
           <div className="text-center">
-            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
+            <p className="text-xs font-medium uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>
               Total Ad Spend
             </p>
             <p
-              className="mt-1 text-4xl font-extrabold font-mono tracking-tight"
+              className="mt-1 text-3xl font-semibold font-mono tracking-tight"
               style={{ color: "var(--text-primary)" }}
             >
               {fmtCompactLg(data.totalSpend)}
@@ -230,12 +230,12 @@ export function AllPlatformsView({ data }: { data?: AllPlatformsViewData }) {
               const change = pctChange(data.totalSpend, prev?.totalSpend);
               if (change === undefined) return null;
               return (
-                <p className="mt-1 text-xs font-semibold" style={{ color: "var(--text-tertiary)" }}>
+                <p className="mt-1 text-xs font-medium" style={{ color: "var(--text-tertiary)" }}>
                   {change > 0 ? "▲" : "▼"} {change > 0 ? "+" : ""}{change.toFixed(1)}% vs prev
                 </p>
               );
             })()}
-            <p className="mt-1 text-[10px]" style={{ color: "var(--text-tertiary)" }}>
+            <p className="mt-1 text-[11px]" style={{ color: "var(--text-tertiary)" }}>
               {[data.platforms.meta && "Meta", data.platforms.google && "Google"].filter(Boolean).join(" + ")}
             </p>
           </div>
@@ -260,27 +260,27 @@ export function AllPlatformsView({ data }: { data?: AllPlatformsViewData }) {
             >
               <div className="mb-3 flex items-center gap-2">
                 <PlatformIcon platform={p.key} />
-                <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
                   {p.label}
                 </span>
               </div>
               <div className="space-y-2">
                 <div className="flex items-baseline justify-between">
                   <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>Spend</span>
-                  <span className="text-sm font-bold font-mono" style={{ color: "var(--text-primary)" }}>
+                  <span className="text-sm font-semibold font-mono" style={{ color: "var(--text-primary)" }}>
                     {fmtCompact(p.spend)}
                   </span>
                 </div>
                 <div className="flex items-baseline justify-between">
                   <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>Revenue</span>
-                  <span className="text-sm font-bold font-mono" style={{ color: "var(--text-primary)" }}>
+                  <span className="text-sm font-semibold font-mono" style={{ color: "var(--text-primary)" }}>
                     {fmtCompact(p.revenue)}
                   </span>
                 </div>
                 <div className="flex items-baseline justify-between">
                   <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>ROAS</span>
                   <span
-                    className="text-sm font-bold font-mono"
+                    className="text-sm font-semibold font-mono"
                     style={{ color: p.roas >= 2 ? "var(--status-positive)" : p.roas >= 1 ? "var(--status-warning, #f59e0b)" : "var(--status-negative)" }}
                   >
                     {p.roas.toFixed(2)}x
@@ -288,7 +288,7 @@ export function AllPlatformsView({ data }: { data?: AllPlatformsViewData }) {
                 </div>
                 <div className="flex items-baseline justify-between">
                   <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>Conv.</span>
-                  <span className="text-sm font-bold font-mono" style={{ color: "var(--text-primary)" }}>
+                  <span className="text-sm font-semibold font-mono" style={{ color: "var(--text-primary)" }}>
                     {p.conversions.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   </span>
                 </div>
@@ -308,20 +308,20 @@ export function AllPlatformsView({ data }: { data?: AllPlatformsViewData }) {
             >
               <div className="mb-3 flex items-center gap-2">
                 <PlatformIcon platform="shopify" />
-                <span className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+                <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
                   {PLATFORM_LABELS.shopify}
                 </span>
               </div>
               <div className="space-y-2">
                 <div className="flex items-baseline justify-between">
                   <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>Revenue</span>
-                  <span className="text-sm font-bold font-mono" style={{ color: "var(--text-primary)" }}>
+                  <span className="text-sm font-semibold font-mono" style={{ color: "var(--text-primary)" }}>
                     {fmtCompact(data.platforms.shopify.revenue)}
                   </span>
                 </div>
                 <div className="flex items-baseline justify-between">
                   <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>Orders</span>
-                  <span className="text-sm font-bold font-mono" style={{ color: "var(--text-primary)" }}>
+                  <span className="text-sm font-semibold font-mono" style={{ color: "var(--text-primary)" }}>
                     {data.platforms.shopify.orders.toLocaleString()}
                   </span>
                 </div>
@@ -342,7 +342,7 @@ export function AllPlatformsView({ data }: { data?: AllPlatformsViewData }) {
             style={{ borderBottom: "1px solid var(--border-primary)" }}
           >
             <h3
-              className="text-sm font-semibold uppercase tracking-wider"
+              className="text-sm font-medium uppercase tracking-wider"
               style={{ color: "var(--text-tertiary)" }}
             >
               Performance Trend

@@ -227,7 +227,7 @@ function DataSourceRow({
     >
       <div className="flex items-center gap-3">
         <div
-          className="flex h-8 w-8 items-center justify-center rounded-md text-xs font-bold text-white"
+          className="flex h-8 w-8 items-center justify-center rounded-md text-xs font-semibold text-white"
           style={{ background: color }}
         >
           {label.charAt(0)}
