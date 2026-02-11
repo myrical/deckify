@@ -1,5 +1,4 @@
-import type { DeckAnalyzer, AnalysisInput, Anomaly } from "./types";
-import type { SlideData } from "@/core/deck/types";
+import type { DeckAnalyzer, Anomaly } from "./types";
 
 /**
  * NoopAnalyzer — MVP implementation.
@@ -7,18 +6,15 @@ import type { SlideData } from "@/core/deck/types";
  * Swap with ClaudeAnalyzer post-MVP.
  */
 export class NoopAnalyzer implements DeckAnalyzer {
-  async generateExecutiveSummary(_input: AnalysisInput): Promise<string | null> {
+  async generateExecutiveSummary(): Promise<string | null> {
     return null;
   }
 
-  async generateSlideCommentary(
-    _slide: SlideData,
-    _input: AnalysisInput
-  ): Promise<string | null> {
+  async generateSlideCommentary(): Promise<string | null> {
     return null;
   }
 
-  async detectAnomalies(_input: AnalysisInput): Promise<Anomaly[] | null> {
+  async detectAnomalies(): Promise<Anomaly[] | null> {
     return null;
   }
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { NavHeader } from "@/components/nav-header";
 
 type SlideType = "kpi_overview" | "campaign_breakdown" | "trend_analysis" | "top_performers" | "audience_insights" | "budget_allocation" | "comparison" | "custom";

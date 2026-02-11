@@ -5,7 +5,7 @@
  * GoogleSlidesRenderer implement DeckRenderer using the same slide types.
  */
 
-import type { NormalizedMetrics, NormalizedCampaign, NormalizedTimeSeries, NormalizedBreakdown, MetricKey } from "@/core/ad-platforms/types";
+import type { NormalizedMetrics, NormalizedTimeSeries, NormalizedBreakdown, MetricKey } from "@/core/ad-platforms/types";
 
 // ─── Design Tokens ───────────────────────────────────────────────────────────
 

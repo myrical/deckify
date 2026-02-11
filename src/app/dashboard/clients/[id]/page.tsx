@@ -70,10 +70,6 @@ export default function ClientDetailPage() {
   const [allPlatformsData, setAllPlatformsData] = useState<AllPlatformsViewData | null>(null);
   const [allPlatformsLoading, setAllPlatformsLoading] = useState(false);
 
-  // Edit name state
-  const [editingName, setEditingName] = useState(false);
-  const [editName, setEditName] = useState("");
-
   // Delete confirmation
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -293,24 +289,6 @@ export default function ClientDetailPage() {
       fetchAnalytics();
     }
   }, [activeTab, fetchAnalytics]);
-
-  const renameClient = async () => {
-    const name = editName.trim();
-    if (!name) return;
-    try {
-      const res = await fetch(`/api/clients/${clientId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      });
-      if (res.ok) {
-        setEditingName(false);
-        fetchClient();
-      }
-    } catch {
-      // silent
-    }
-  };
 
   const deleteClient = async () => {
     try {

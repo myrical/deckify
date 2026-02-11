@@ -80,7 +80,12 @@ export function ShopifyView({ data }: { data?: ShopifyViewData }) {
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg" style={{ background: "var(--bg-tertiary)" }}>
-                          {product.imageUrl ? (<img src={product.imageUrl} alt="" className="h-full w-full object-cover" />) : (<span className="text-xs" style={{ color: "var(--text-tertiary)" }}>IMG</span>)}
+                          {product.imageUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={product.imageUrl} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>IMG</span>
+                          )}
                         </div>
                         <span className="font-medium" style={{ color: "var(--text-primary)" }}>{product.name}</span>
                       </div>

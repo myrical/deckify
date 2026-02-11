@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { MetricCard } from "./metric-card";
 import { CampaignChart } from "./charts/campaign-chart";
 import { TimeSeriesChart } from "./charts/time-series-chart";
@@ -42,6 +42,7 @@ function CreativeCard({ creative }: { creative: MetaCreative }) {
     <div className="group overflow-hidden rounded-xl transition-all duration-200 hover:-translate-y-0.5" style={{ border: "1px solid var(--border-primary)", boxShadow: "var(--shadow-sm)" }}>
       <div className="relative" style={{ aspectRatio: "4/5", background: "var(--bg-tertiary)" }}>
         {creative.thumbnailUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
           <img src={`/api/image-proxy?url=${encodeURIComponent(creative.thumbnailUrl)}`} alt={creative.name} className="h-full w-full object-cover" loading="lazy" />
         ) : (
           <div className="flex h-full items-center justify-center">
@@ -132,34 +133,31 @@ export function MetaView({ data }: { data?: MetaViewData }) {
   const [minRoas, setMinRoas] = useState(0);
   const [campaignFilter, setCampaignFilter] = useState("");
 
-  if (!data) return null;
+  const creatives = data?.creatives ?? [];
+  const campaigns = data?.campaigns ?? [];
+  const prev = data?.previousPeriod;
 
-  const prev = data.previousPeriod;
-
-  const timeSeriesData = (data.timeSeries ?? []).map((ts) => ({
+  const timeSeriesData = (data?.timeSeries ?? []).map((ts) => ({
     date: ts.date,
     spend: ts.metrics?.spend ?? 0,
     conversions: ts.metrics?.conversions ?? 0,
   }));
 
-  const campaignChartData = data.campaigns.map((c) => ({
+  const campaignChartData = campaigns.map((c) => ({
     name: c.name,
     spend: c.spend,
     revenue: c.revenue ?? 0,
     roas: c.roas,
   }));
 
-  const hasCreatives = data.creatives.length > 0;
+  const hasCreatives = creatives.length > 0;
 
   // Unique campaign names for filter dropdown
-  const campaignNames = useMemo(() => {
-    const names = new Set(data.creatives.map((c) => c.campaignName));
-    return Array.from(names).sort();
-  }, [data.creatives]);
+  const campaignNames = Array.from(new Set(creatives.map((c) => c.campaignName))).sort();
 
   // Filter + sort creatives
-  const filteredCreatives = useMemo(() => {
-    let result = [...data.creatives];
+  const filteredCreatives = (() => {
+    let result = [...creatives];
 
     // Apply filters
     if (minSpend > 0) result = result.filter((c) => c.spend >= minSpend);
@@ -176,7 +174,9 @@ export function MetaView({ data }: { data?: MetaViewData }) {
     });
 
     return result;
-  }, [data.creatives, sortBy, minSpend, minRoas, campaignFilter]);
+  })();
+
+  if (!data) return null;
 
   // Summary metrics for the creatives tab (based on filtered set)
   const creativeTotalSpend = filteredCreatives.reduce((sum, c) => sum + c.spend, 0);
@@ -185,7 +185,7 @@ export function MetaView({ data }: { data?: MetaViewData }) {
 
   const subTabs: { id: MetaSubTab; label: string; count?: number }[] = [
     { id: "overview", label: "Overview" },
-    { id: "creatives", label: "Creatives", count: hasCreatives ? data.creatives.length : undefined },
+    { id: "creatives", label: "Creatives", count: hasCreatives ? creatives.length : undefined },
   ];
 
   const hasActiveFilters = minSpend > 0 || minRoas > 0 || campaignFilter !== "";
@@ -252,7 +252,7 @@ export function MetaView({ data }: { data?: MetaViewData }) {
           )}
 
           {/* Campaign Performance Chart */}
-          {data.campaigns.length >= 2 && (
+          {campaigns.length >= 2 && (
             <div className="overflow-hidden rounded-xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}>
               <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--border-primary)" }}>
                 <h3 className="text-sm font-medium uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Campaign Performance</h3>
@@ -264,7 +264,7 @@ export function MetaView({ data }: { data?: MetaViewData }) {
           )}
 
           {/* Campaign Table */}
-          {data.campaigns.length > 0 && (
+          {campaigns.length > 0 && (
             <div className="overflow-hidden rounded-xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}>
               <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--border-primary)" }}>
                 <h3 className="text-sm font-medium uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Campaigns</h3>
@@ -283,7 +283,7 @@ export function MetaView({ data }: { data?: MetaViewData }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.campaigns.map((campaign, idx) => (
+                    {campaigns.map((campaign, idx) => (
                       <tr key={campaign.id} className="transition-colors" style={{ background: idx % 2 === 0 ? "var(--bg-card)" : "var(--bg-secondary)", borderBottom: "1px solid var(--border-secondary)" }}>
                         <td className="px-6 py-3 font-medium" style={{ color: "var(--text-primary)" }}>{campaign.name}</td>
                         <td className="px-4 py-3"><span className="inline-block rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: campaign.status === "active" ? "var(--status-positive-light)" : "var(--bg-tertiary)", color: campaign.status === "active" ? "var(--status-positive)" : "var(--text-tertiary)" }}>{campaign.status}</span></td>
@@ -310,11 +310,11 @@ export function MetaView({ data }: { data?: MetaViewData }) {
                   className="text-xs font-medium transition-colors hover:opacity-80"
                   style={{ color: "var(--accent-primary)" }}
                 >
-                  View all {data.creatives.length} creatives &rarr;
+                  View all {creatives.length} creatives &rarr;
                 </button>
               </div>
               <div className="grid grid-cols-1 gap-4 p-6 min-[500px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {data.creatives.slice(0, 4).map((creative) => (
+                {creatives.slice(0, 4).map((creative) => (
                   <CreativeCard key={creative.id} creative={creative} />
                 ))}
               </div>
@@ -331,7 +331,7 @@ export function MetaView({ data }: { data?: MetaViewData }) {
                 <MetricCard label="Creative Spend" value={fmt(creativeTotalSpend)} metricType="neutral" size="md" />
                 <MetricCard label="Conversions" value={creativeTotalConversions.toLocaleString()} metricType="positive-up" size="md" />
                 <MetricCard label="Total Clicks" value={creativeTotalClicks.toLocaleString()} metricType="neutral" size="md" />
-                <MetricCard label="Creatives Tracked" value={data.creatives.length.toString()} metricType="neutral" size="md" />
+                <MetricCard label="Creatives Tracked" value={creatives.length.toString()} metricType="neutral" size="md" />
               </div>
 
               {/* Sort & Filter toolbar */}
@@ -361,7 +361,7 @@ export function MetaView({ data }: { data?: MetaViewData }) {
                     </button>
                   )}
                   <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>
-                    {filteredCreatives.length} of {data.creatives.length} creatives
+                    {filteredCreatives.length} of {creatives.length} creatives
                   </span>
                 </div>
               </div>

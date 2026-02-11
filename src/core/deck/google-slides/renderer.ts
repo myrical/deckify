@@ -31,10 +31,6 @@ function hexToRgb(hex: string): slides_v1.Schema$RgbColor {
   };
 }
 
-function solidFill(hex: string): slides_v1.Schema$SolidFill {
-  return { color: { rgbColor: hexToRgb(hex) } };
-}
-
 function emu(inches: number): number {
   return Math.round(inches * 914400);
 }

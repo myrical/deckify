@@ -14,29 +14,20 @@ export function useTheme() {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("light");
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window === "undefined") return "light";
     const stored = localStorage.getItem("prism-theme") as Theme | null;
-    const preferred = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-    setTheme(stored ?? preferred);
-    setMounted(true);
-  }, []);
+    if (stored === "light" || stored === "dark") return stored;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  });
 
   useEffect(() => {
-    if (!mounted) return;
     document.documentElement.classList.toggle("dark", theme === "dark");
     localStorage.setItem("prism-theme", theme);
-  }, [theme, mounted]);
+  }, [theme]);
 
   function toggle() {
     setTheme((t) => (t === "light" ? "dark" : "light"));
-  }
-
-  // Prevent flash of wrong theme
-  if (!mounted) {
-    return <>{children}</>;
   }
 
   return (

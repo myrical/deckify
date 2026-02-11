@@ -42,12 +42,6 @@ interface ShopifyOrder {
   }>;
 }
 
-interface ShopifyProduct {
-  id: number;
-  title: string;
-  image?: { src: string };
-}
-
 // ─── Config ──────────────────────────────────────────────────────────────────
 
 function getShopifyConfig() {

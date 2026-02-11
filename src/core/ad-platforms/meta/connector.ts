@@ -173,19 +173,6 @@ function normalizeMetrics(row: MetaInsightRow, dateRange: DateRange): Normalized
   };
 }
 
-function mapCampaignStatus(status?: string): NormalizedCampaign["status"] {
-  switch (status?.toUpperCase()) {
-    case "ACTIVE":
-      return "active";
-    case "PAUSED":
-      return "paused";
-    case "ARCHIVED":
-      return "archived";
-    default:
-      return "completed";
-  }
-}
-
 function formatDate(date: Date): string {
   return date.toISOString().split("T")[0];
 }

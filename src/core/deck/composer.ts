@@ -6,7 +6,7 @@
  * data and the presentation layer.
  */
 
-import type { AccountSummary, MetricKey, NormalizedMetrics } from "@/core/ad-platforms/types";
+import type { AccountSummary, MetricKey } from "@/core/ad-platforms/types";
 import type {
   DeckRenderer,
   DeckOutput,
@@ -129,7 +129,7 @@ export async function composeDeck(options: ComposeOptions): Promise<DeckOutput> 
     onProgress?.(`Building slides for ${account.account.name}...`);
 
     for (const selection of enabledSlides) {
-      const slideData = await buildSlideData(selection, account, config, accounts);
+      const slideData = await buildSlideData(selection, account);
       if (!slideData) continue;
 
       // Add commentary from analyzer if available
@@ -148,9 +148,7 @@ export async function composeDeck(options: ComposeOptions): Promise<DeckOutput> 
 
 async function buildSlideData(
   selection: SlideSelection,
-  account: AccountSummary,
-  config: DeckConfig,
-  _allAccounts: AccountSummary[]
+  account: AccountSummary
 ): Promise<SlideData | null> {
   const platform = account.account.platform === "meta" ? "Meta Ads" : "Google Ads";
 

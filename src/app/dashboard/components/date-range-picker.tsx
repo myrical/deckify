@@ -58,12 +58,6 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
   const [endInput, setEndInput] = useState(value?.end ?? "");
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Sync internal state when value changes externally
-  useEffect(() => {
-    setStartInput(value?.start ?? "");
-    setEndInput(value?.end ?? "");
-  }, [value]);
-
   // Close on click outside
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -96,7 +90,14 @@ export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
     <div className="relative" ref={containerRef}>
       {/* Trigger button */}
       <button
-        onClick={() => setOpen(!open)}
+        onClick={() => {
+          if (!open) {
+            // Reset draft inputs from the external value whenever opening.
+            setStartInput(value?.start ?? "");
+            setEndInput(value?.end ?? "");
+          }
+          setOpen(!open);
+        }}
         className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-all"
         style={{
           background: "var(--bg-card)",

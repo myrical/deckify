@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 interface AdAccountInfo {
   id: string;
@@ -24,7 +23,6 @@ const PLATFORM_COLORS: Record<string, string> = {
 };
 
 export default function ClientsPage() {
-  const router = useRouter();
   const [clients, setClients] = useState<ClientInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [newName, setNewName] = useState("");
