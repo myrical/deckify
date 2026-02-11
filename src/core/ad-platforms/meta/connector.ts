@@ -338,12 +338,13 @@ export class MetaAdsConnector implements AdPlatformConnector {
   async fetchAccountSummary(params: MetricsParams): Promise<AccountSummary> {
     const { accountId, tokenSet, dateRange } = params;
 
-    // Fetch account info, campaigns, time series, and breakdowns in parallel
-    const [accountInfo, campaigns, timeSeries, breakdowns] = await Promise.all([
+    // Fetch account info, campaigns, time series, breakdowns, and creatives in parallel
+    const [accountInfo, campaigns, timeSeries, breakdowns, creatives] = await Promise.all([
       this.fetchAccountInfo(accountId, tokenSet),
       this.fetchCampaigns({ accountId, tokenSet, dateRange }),
       this.fetchTimeSeries(accountId, tokenSet, dateRange),
       this.fetchBreakdowns(accountId, tokenSet, dateRange),
+      this.fetchCreatives(accountId, tokenSet, dateRange).catch(() => [] as NormalizedCreative[]),
     ]);
 
     // Aggregate campaign metrics into account-level metrics
@@ -375,6 +376,7 @@ export class MetaAdsConnector implements AdPlatformConnector {
       campaigns,
       timeSeries,
       breakdowns,
+      creatives,
     };
   }
 
@@ -505,7 +507,7 @@ export class MetaAdsConnector implements AdPlatformConnector {
       `${META_GRAPH_URL}/act_${accountId}/ads?fields=${encodeURIComponent(adFields)}&effective_status=["ACTIVE","PAUSED"]&limit=100`;
 
     while (nextUrl && ads.length < 200) {
-      const result = await metaFetch<{ data: MetaAdRow[]; paging?: { next?: string } }>(
+      const result: { data: MetaAdRow[]; paging?: { next?: string } } = await metaFetch(
         nextUrl,
         tokenSet.accessToken
       );
