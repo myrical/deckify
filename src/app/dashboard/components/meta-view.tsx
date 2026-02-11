@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { MetricCard } from "./metric-card";
 import { CampaignChart } from "./charts/campaign-chart";
 import { TimeSeriesChart } from "./charts/time-series-chart";
@@ -15,6 +16,8 @@ interface MetaViewData {
   timeSeries?: Array<{ date: string; metrics: Record<string, number> }>;
 }
 
+type MetaSubTab = "overview" | "creatives";
+
 function pctChange(current: number, previous?: number): number | undefined { if (previous === undefined || previous === 0) return undefined; return ((current - previous) / previous) * 100; }
 function fmt(n: number): string { return "$" + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
 
@@ -24,7 +27,35 @@ function roasColor(roas: number): string {
   return "var(--status-negative)";
 }
 
+function CreativeCard({ creative }: { creative: MetaCreative }) {
+  return (
+    <div className="group overflow-hidden rounded-xl transition-all duration-200 hover:-translate-y-0.5" style={{ border: "1px solid var(--border-primary)", boxShadow: "var(--shadow-sm)" }}>
+      <div className="relative" style={{ aspectRatio: "4/5", background: "var(--bg-tertiary)" }}>
+        {creative.thumbnailUrl ? (
+          <img src={`/api/image-proxy?url=${encodeURIComponent(creative.thumbnailUrl)}`} alt={creative.name} className="h-full w-full object-cover" loading="lazy" />
+        ) : (
+          <div className="flex h-full items-center justify-center">
+            <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>No preview</span>
+          </div>
+        )}
+      </div>
+      <div className="p-3" style={{ background: "var(--bg-card)" }}>
+        <p className="truncate text-xs font-medium" style={{ color: "var(--text-primary)" }}>{creative.name}</p>
+        <p className="truncate text-xs" style={{ color: "var(--text-tertiary)" }}>{creative.campaignName} &rsaquo; {creative.adSetName}</p>
+        <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1">
+          <div><p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Spend</p><p className="text-xs font-semibold font-mono" style={{ color: "var(--text-primary)" }}>{fmt(creative.spend)}</p></div>
+          <div><p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Conv.</p><p className="text-xs font-semibold font-mono" style={{ color: "var(--text-primary)" }}>{creative.conversions}</p></div>
+          <div><p className="text-xs" style={{ color: "var(--text-tertiary)" }}>CPA</p><p className="text-xs font-semibold font-mono" style={{ color: "var(--text-primary)" }}>{fmt(creative.cpa)}</p></div>
+          <div><p className="text-xs" style={{ color: "var(--text-tertiary)" }}>CTR</p><p className="text-xs font-semibold font-mono" style={{ color: "var(--text-primary)" }}>{creative.ctr.toFixed(2)}%</p></div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function MetaView({ data }: { data?: MetaViewData }) {
+  const [subTab, setSubTab] = useState<MetaSubTab>("overview");
+
   if (!data) return null;
 
   const prev = data.previousPeriod;
@@ -42,123 +73,181 @@ export function MetaView({ data }: { data?: MetaViewData }) {
     roas: c.roas,
   }));
 
+  const hasCreatives = data.creatives.length > 0;
+
+  // Summary metrics for the creatives tab
+  const creativeTotalSpend = data.creatives.reduce((sum, c) => sum + c.spend, 0);
+  const creativeTotalConversions = data.creatives.reduce((sum, c) => sum + c.conversions, 0);
+  const creativeTotalClicks = data.creatives.reduce((sum, c) => sum + c.clicks, 0);
+  const subTabs: { id: MetaSubTab; label: string; count?: number }[] = [
+    { id: "overview", label: "Overview" },
+    { id: "creatives", label: "Creatives", count: hasCreatives ? data.creatives.length : undefined },
+  ];
+
   return (
     <div className="space-y-6">
-      {/* KPI Grid: 4 primary + 4 secondary */}
-      <div className="space-y-4">
-        <div className="stagger-children grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <MetricCard label="Spend" value={fmt(data.spend)} change={pctChange(data.spend, prev?.spend)} metricType="neutral" size="md" />
-          <MetricCard label="Revenue" value={fmt(data.revenue ?? 0)} metricType="positive-up" size="md" />
-          <MetricCard label="ROAS" value={data.roas.toFixed(2) + "x"} change={pctChange(data.roas, prev?.roas)} metricType="positive-up" size="md" />
-          <MetricCard label="Conversions" value={data.conversions.toLocaleString()} change={pctChange(data.conversions, prev?.conversions)} metricType="positive-up" size="md" />
-        </div>
-        <div className="stagger-children grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <MetricCard label="Impressions" value={data.impressions.toLocaleString()} metricType="neutral" size="sm" />
-          <MetricCard label="Clicks" value={data.clicks.toLocaleString()} metricType="neutral" size="sm" />
-          <MetricCard label="CTR" value={data.ctr.toFixed(2) + "%"} metricType="neutral" size="sm" />
-          <MetricCard label="CPC" value={fmt(data.cpc)} metricType="negative-up" size="sm" />
-        </div>
+      {/* Sub-tab navigation */}
+      <div className="flex gap-1 rounded-lg p-1" style={{ background: "var(--bg-secondary)" }}>
+        {subTabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setSubTab(tab.id)}
+            className={`rounded-md px-4 py-2 text-sm font-medium transition-all ${subTab !== tab.id ? "btn-ghost" : ""}`}
+            style={{
+              background: subTab === tab.id ? "var(--bg-card)" : "transparent",
+              color: subTab === tab.id ? "var(--accent-primary)" : "var(--text-tertiary)",
+              boxShadow: subTab === tab.id ? "var(--shadow-sm)" : "none",
+            }}
+          >
+            {tab.label}
+            {tab.count !== undefined && (
+              <span className="ml-1.5 rounded-full px-1.5 py-0.5 text-xs" style={{ background: subTab === tab.id ? "var(--accent-primary)" : "var(--bg-tertiary)", color: subTab === tab.id ? "white" : "var(--text-tertiary)" }}>
+                {tab.count}
+              </span>
+            )}
+          </button>
+        ))}
       </div>
 
-      {/* Time Series Chart */}
-      {timeSeriesData.length > 0 && (
-        <div className="overflow-hidden rounded-xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}>
-          <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--border-primary)" }}>
-            <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Daily Performance</h3>
+      {subTab === "overview" ? (
+        <>
+          {/* KPI Grid: 4 primary + 4 secondary */}
+          <div className="space-y-4">
+            <div className="stagger-children grid grid-cols-2 gap-4 lg:grid-cols-4">
+              <MetricCard label="Spend" value={fmt(data.spend)} change={pctChange(data.spend, prev?.spend)} metricType="neutral" size="md" />
+              <MetricCard label="Revenue" value={fmt(data.revenue ?? 0)} metricType="positive-up" size="md" />
+              <MetricCard label="ROAS" value={data.roas.toFixed(2) + "x"} change={pctChange(data.roas, prev?.roas)} metricType="positive-up" size="md" />
+              <MetricCard label="Conversions" value={data.conversions.toLocaleString()} change={pctChange(data.conversions, prev?.conversions)} metricType="positive-up" size="md" />
+            </div>
+            <div className="stagger-children grid grid-cols-2 gap-4 lg:grid-cols-4">
+              <MetricCard label="Impressions" value={data.impressions.toLocaleString()} metricType="neutral" size="sm" />
+              <MetricCard label="Clicks" value={data.clicks.toLocaleString()} metricType="neutral" size="sm" />
+              <MetricCard label="CTR" value={data.ctr.toFixed(2) + "%"} metricType="neutral" size="sm" />
+              <MetricCard label="CPC" value={fmt(data.cpc)} metricType="negative-up" size="sm" />
+            </div>
           </div>
-          <div className="p-6">
-            <TimeSeriesChart
-              data={timeSeriesData}
-              metrics={[
-                { key: "spend", label: "Spend", color: "var(--accent-primary)", type: "bar", yAxisId: "left" },
-                { key: "conversions", label: "Conversions", color: "var(--accent-secondary)", type: "line", yAxisId: "right" },
-              ]}
-            />
-          </div>
-        </div>
-      )}
 
-      {/* Campaign Performance Chart */}
-      {data.campaigns.length >= 2 && (
-        <div className="overflow-hidden rounded-xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}>
-          <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--border-primary)" }}>
-            <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Campaign Performance</h3>
-          </div>
-          <div className="p-6">
-            <CampaignChart data={campaignChartData} />
-          </div>
-        </div>
-      )}
+          {/* Time Series Chart */}
+          {timeSeriesData.length > 0 && (
+            <div className="overflow-hidden rounded-xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}>
+              <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--border-primary)" }}>
+                <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Daily Performance</h3>
+              </div>
+              <div className="p-6">
+                <TimeSeriesChart
+                  data={timeSeriesData}
+                  metrics={[
+                    { key: "spend", label: "Spend", color: "var(--accent-primary)", type: "bar", yAxisId: "left" },
+                    { key: "conversions", label: "Conversions", color: "var(--accent-secondary)", type: "line", yAxisId: "right" },
+                  ]}
+                />
+              </div>
+            </div>
+          )}
 
-      {/* Campaign Table */}
-      {data.campaigns.length > 0 && (
-        <div className="overflow-hidden rounded-xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}>
-          <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--border-primary)" }}>
-            <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Campaigns</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr style={{ background: "var(--bg-secondary)" }}>
-                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Campaign</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Status</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Spend</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Revenue</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Conv.</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>CPA</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>ROAS</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.campaigns.map((campaign, idx) => (
-                  <tr key={campaign.id} className="transition-colors" style={{ background: idx % 2 === 0 ? "var(--bg-card)" : "var(--bg-secondary)", borderBottom: "1px solid var(--border-secondary)" }}>
-                    <td className="px-6 py-3 font-medium" style={{ color: "var(--text-primary)" }}>{campaign.name}</td>
-                    <td className="px-4 py-3"><span className="inline-block rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: campaign.status === "active" ? "var(--status-positive-light)" : "var(--bg-tertiary)", color: campaign.status === "active" ? "var(--status-positive)" : "var(--text-tertiary)" }}>{campaign.status}</span></td>
-                    <td className="px-4 py-3 text-right" style={{ color: "var(--text-primary)" }}>{fmt(campaign.spend)}</td>
-                    <td className="px-4 py-3 text-right font-semibold" style={{ color: "var(--accent-primary)" }}>{fmt(campaign.revenue ?? 0)}</td>
-                    <td className="px-4 py-3 text-right" style={{ color: "var(--text-primary)" }}>{campaign.conversions.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-right" style={{ color: "var(--text-primary)" }}>{fmt(campaign.cpa)}</td>
-                    <td className="px-4 py-3 text-right font-medium" style={{ color: roasColor(campaign.roas) }}>{campaign.roas.toFixed(2)}x</td>
-                  </tr>
+          {/* Campaign Performance Chart */}
+          {data.campaigns.length >= 2 && (
+            <div className="overflow-hidden rounded-xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}>
+              <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--border-primary)" }}>
+                <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Campaign Performance</h3>
+              </div>
+              <div className="p-6">
+                <CampaignChart data={campaignChartData} />
+              </div>
+            </div>
+          )}
+
+          {/* Campaign Table */}
+          {data.campaigns.length > 0 && (
+            <div className="overflow-hidden rounded-xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}>
+              <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--border-primary)" }}>
+                <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Campaigns</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr style={{ background: "var(--bg-secondary)" }}>
+                      <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Campaign</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Status</th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Spend</th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Revenue</th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Conv.</th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>CPA</th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>ROAS</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.campaigns.map((campaign, idx) => (
+                      <tr key={campaign.id} className="transition-colors" style={{ background: idx % 2 === 0 ? "var(--bg-card)" : "var(--bg-secondary)", borderBottom: "1px solid var(--border-secondary)" }}>
+                        <td className="px-6 py-3 font-medium" style={{ color: "var(--text-primary)" }}>{campaign.name}</td>
+                        <td className="px-4 py-3"><span className="inline-block rounded-full px-2 py-0.5 text-xs font-medium" style={{ background: campaign.status === "active" ? "var(--status-positive-light)" : "var(--bg-tertiary)", color: campaign.status === "active" ? "var(--status-positive)" : "var(--text-tertiary)" }}>{campaign.status}</span></td>
+                        <td className="px-4 py-3 text-right" style={{ color: "var(--text-primary)" }}>{fmt(campaign.spend)}</td>
+                        <td className="px-4 py-3 text-right font-semibold" style={{ color: "var(--accent-primary)" }}>{fmt(campaign.revenue ?? 0)}</td>
+                        <td className="px-4 py-3 text-right" style={{ color: "var(--text-primary)" }}>{campaign.conversions.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-right" style={{ color: "var(--text-primary)" }}>{fmt(campaign.cpa)}</td>
+                        <td className="px-4 py-3 text-right font-medium" style={{ color: roasColor(campaign.roas) }}>{campaign.roas.toFixed(2)}x</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Creative Overview (preview on overview tab) */}
+          {hasCreatives && (
+            <div className="overflow-hidden rounded-xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}>
+              <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: "1px solid var(--border-primary)" }}>
+                <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Top Creatives</h3>
+                <button
+                  onClick={() => setSubTab("creatives")}
+                  className="text-xs font-medium transition-colors hover:opacity-80"
+                  style={{ color: "var(--accent-primary)" }}
+                >
+                  View all {data.creatives.length} creatives &rarr;
+                </button>
+              </div>
+              <div className="grid grid-cols-1 gap-4 p-6 min-[500px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {data.creatives.slice(0, 4).map((creative) => (
+                  <CreativeCard key={creative.id} creative={creative} />
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        /* Creatives sub-tab */
+        <>
+          {hasCreatives ? (
+            <>
+              {/* Creative summary metrics */}
+              <div className="stagger-children grid grid-cols-2 gap-4 lg:grid-cols-4">
+                <MetricCard label="Creative Spend" value={fmt(creativeTotalSpend)} metricType="neutral" size="md" />
+                <MetricCard label="Conversions" value={creativeTotalConversions.toLocaleString()} metricType="positive-up" size="md" />
+                <MetricCard label="Total Clicks" value={creativeTotalClicks.toLocaleString()} metricType="neutral" size="md" />
+                <MetricCard label="Creatives Tracked" value={data.creatives.length.toString()} metricType="neutral" size="md" />
+              </div>
 
-      {/* Creative Overview */}
-      {data.creatives.length > 0 && (
-        <div className="overflow-hidden rounded-xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}>
-          <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--border-primary)" }}>
-            <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>Creative Overview</h3>
-          </div>
-          <div className="grid grid-cols-1 gap-4 p-6 min-[500px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {data.creatives.slice(0, 8).map((creative) => (
-              <div key={creative.id} className="group overflow-hidden rounded-xl transition-all duration-200 hover:-translate-y-0.5" style={{ border: "1px solid var(--border-primary)", boxShadow: "var(--shadow-sm)" }}>
-                <div className="relative" style={{ aspectRatio: "4/5", background: "var(--bg-tertiary)" }}>
-                  {creative.thumbnailUrl ? (
-                    <img src={`/api/image-proxy?url=${encodeURIComponent(creative.thumbnailUrl)}`} alt={creative.name} className="h-full w-full object-cover" loading="lazy" />
-                  ) : (
-                    <div className="flex h-full items-center justify-center">
-                      <span className="text-xs" style={{ color: "var(--text-tertiary)" }}>No preview</span>
-                    </div>
-                  )}
+              {/* Full creative grid */}
+              <div className="overflow-hidden rounded-xl" style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}>
+                <div className="px-6 py-4" style={{ borderBottom: "1px solid var(--border-primary)" }}>
+                  <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: "var(--text-tertiary)" }}>All Creatives</h3>
+                  <p className="mt-1 text-xs" style={{ color: "var(--text-tertiary)" }}>Sorted by spend, highest first</p>
                 </div>
-                <div className="p-3" style={{ background: "var(--bg-card)" }}>
-                  <p className="truncate text-xs font-medium" style={{ color: "var(--text-primary)" }}>{creative.name}</p>
-                  <p className="truncate text-xs" style={{ color: "var(--text-tertiary)" }}>{creative.campaignName} &rsaquo; {creative.adSetName}</p>
-                  <div className="mt-2 grid grid-cols-2 gap-x-2 gap-y-1">
-                    <div><p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Spend</p><p className="text-xs font-semibold font-mono" style={{ color: "var(--text-primary)" }}>{fmt(creative.spend)}</p></div>
-                    <div><p className="text-xs" style={{ color: "var(--text-tertiary)" }}>Conv.</p><p className="text-xs font-semibold font-mono" style={{ color: "var(--text-primary)" }}>{creative.conversions}</p></div>
-                    <div><p className="text-xs" style={{ color: "var(--text-tertiary)" }}>CPA</p><p className="text-xs font-semibold font-mono" style={{ color: "var(--text-primary)" }}>{fmt(creative.cpa)}</p></div>
-                    <div><p className="text-xs" style={{ color: "var(--text-tertiary)" }}>CTR</p><p className="text-xs font-semibold font-mono" style={{ color: "var(--text-primary)" }}>{creative.ctr.toFixed(2)}%</p></div>
-                  </div>
+                <div className="grid grid-cols-1 gap-4 p-6 min-[500px]:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {data.creatives.map((creative) => (
+                    <CreativeCard key={creative.id} creative={creative} />
+                  ))}
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center rounded-xl py-16" style={{ background: "var(--bg-card)", border: "1px solid var(--border-primary)" }}>
+              <p className="text-sm font-medium" style={{ color: "var(--text-secondary)" }}>No creative data available</p>
+              <p className="mt-1 text-xs" style={{ color: "var(--text-tertiary)" }}>Creatives will appear here once ads with spend are running</p>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
